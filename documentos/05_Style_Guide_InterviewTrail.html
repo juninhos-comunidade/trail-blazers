@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InterviewTrail — Style Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ---- Primária: Trail (esmeralda-teal) ---- */
+    --trail-50:#ECFDF6; --trail-100:#D0F7E7; --trail-200:#A3EFD0; --trail-300:#6BE0B4;
+    --trail-400:#34C994; --trail-500:#12B886; --trail-600:#0E9A70; --trail-700:#0C7A5A;
+    --trail-800:#0B6048; --trail-900:#0A4C3A;
+
+    /* ---- Accent: Ember (âmbar) ---- */
+    --ember-100:#FDE9C2; --ember-300:#F9BE4E; --ember-400:#F5A623; --ember-600:#B86E08;
+
+    /* ---- Neutros: Slate (grafite frio) ---- */
+    --slate-50:#F6F8FA; --slate-100:#EDF1F5; --slate-200:#DCE3EB; --slate-300:#B9C4D0;
+    --slate-400:#8695A8; --slate-500:#5D6B80; --slate-600:#45516A; --slate-700:#323C4E;
+    --slate-800:#1F2836; --slate-900:#141B26; --slate-950:#0C111A;
+
+    /* ---- Semânticas ---- */
+    --success:#12B886; --warning:#F97316; --danger:#EF4444; --info:#3B82F6;
+
+    /* ---- Tipos de pergunta ---- */
+    --q-logic:#3B82F6; --q-scenario:#8B5CF6; --q-project:#12B886; --q-code:#F5A623;
+
+    /* ---- Espaçamento (base 4) ---- */
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
+    --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-16:64px; --sp-20:80px;
+
+    /* ---- Raio ---- */
+    --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:20px; --r-full:999px;
+
+    /* ---- Tipografia ---- */
+    --font-display:'Space Grotesk', system-ui, sans-serif;
+    --font-body:'Inter', system-ui, sans-serif;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  /* ---- Tema escuro (padrão) ---- */
+  [data-theme="dark"] {
+    --bg:var(--slate-950); --surface:var(--slate-900); --surface-2:var(--slate-800);
+    --border:#26303F; --text:var(--slate-100); --text-2:var(--slate-400); --text-muted:var(--slate-500);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow-md:0 6px 20px rgba(0,0,0,.45);
+    --shadow-lg:0 16px 40px rgba(0,0,0,.55); --swatch-ring:rgba(255,255,255,.08);
+  }
+  /* ---- Tema claro ---- */
+  [data-theme="light"] {
+    --bg:var(--slate-50); --surface:#FFFFFF; --surface-2:#FFFFFF;
+    --border:var(--slate-200); --text:var(--slate-900); --text-2:var(--slate-600); --text-muted:var(--slate-400);
+    --shadow-sm:0 1px 2px rgba(16,24,40,.06); --shadow-md:0 6px 20px rgba(16,24,40,.08);
+    --shadow-lg:0 16px 40px rgba(16,24,40,.12); --swatch-ring:rgba(16,24,40,.08);
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { scroll-behavior:smooth; }
+  body {
+    font-family:var(--font-body); background:var(--bg); color:var(--text);
+    line-height:1.6; -webkit-font-smoothing:antialiased; transition:background .3s ease, color .3s ease;
+  }
+  h1,h2,h3,h4 { font-family:var(--font-display); font-weight:600; line-height:1.15; letter-spacing:-.02em; color:var(--text); }
+  code, .mono { font-family:var(--font-mono); }
+  a { color:var(--trail-400); }
+  :focus-visible { outline:2px solid var(--trail-400); outline-offset:3px; border-radius:var(--r-sm); }
+
+  .wrap { max-width:1080px; margin:0 auto; padding:0 var(--sp-6); }
+
+  /* ---- Eyebrow / label ---- */
+  .eyebrow {
+    font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--trail-400);
+  }
+
+  /* ================= HEADER ================= */
+  header.hero {
+    border-bottom:1px solid var(--border); background:
+      radial-gradient(1200px 400px at 15% -10%, color-mix(in srgb, var(--trail-500) 12%, transparent), transparent 70%),
+      var(--bg);
+  }
+  .topbar { display:flex; justify-content:space-between; align-items:center; padding:var(--sp-6) 0; }
+  .wordmark { display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:-.02em; }
+  .wordmark .b { color:var(--trail-400); }
+  .wordmark svg { display:block; }
+
+  .theme-toggle {
+    display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+    background:var(--surface); border:1px solid var(--border); color:var(--text-2);
+    font-family:var(--font-mono); font-size:12px; letter-spacing:.06em; text-transform:uppercase;
+    padding:8px 14px; border-radius:var(--r-full); transition:all .2s ease;
+  }
+  .theme-toggle:hover { color:var(--text); border-color:var(--trail-500); }
+
+  .hero-body { padding:var(--sp-10) 0 var(--sp-16); }
+  .hero-body h1 { font-size:clamp(2.4rem,6vw,3.6rem); font-weight:700; max-width:16ch; }
+  .hero-body p.lede { font-size:1.15rem; color:var(--text-2); max-width:56ch; margin-top:var(--sp-5); }
+  .hero-meta { display:flex; flex-wrap:wrap; gap:var(--sp-3); margin-top:var(--sp-8); }
+  .meta-pill {
+    font-family:var(--font-mono); font-size:12.5px; color:var(--text-2);
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--r-full); padding:6px 14px;
+  }
+  .meta-pill b { color:var(--text); font-weight:500; }
+
+  /* ================= SECTIONS ================= */
+  section.block { padding:var(--sp-16) 0; border-bottom:1px solid var(--border); }
+  .sec-head { display:flex; align-items:baseline; gap:var(--sp-4); margin-bottom:var(--sp-8); }
+  .sec-num { font-family:var(--font-mono); font-size:13px; color:var(--trail-500); font-weight:500; }
+  .sec-head h2 { font-size:1.9rem; }
+  .sec-intro { color:var(--text-2); max-width:64ch; margin:calc(-1 * var(--sp-4)) 0 var(--sp-8); }
+
+  .grid { display:grid; gap:var(--sp-4); }
+  .cols-2 { grid-template-columns:repeat(2,1fr); }
+  .cols-3 { grid-template-columns:repeat(3,1fr); }
+  .cols-4 { grid-template-columns:repeat(4,1fr); }
+
+  /* ---- Brand cards (personality) ---- */
+  .pcard { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:var(--sp-6); }
+  .pcard h4 { font-size:1.1rem; margin-bottom:var(--sp-2); }
+  .pcard p { color:var(--text-2); font-size:.95rem; }
+
+  /* ================= COLOR ================= */
+  .ramp { display:grid; grid-template-columns:repeat(10,1fr); border-radius:var(--r-md); overflow:hidden; border:1px solid var(--border); }
+  .ramp.short { grid-template-columns:repeat(4,1fr); }
+  .swatch { height:76px; display:flex; align-items:flex-end; padding:8px; }
+  .swatch span { font-family:var(--font-mono); font-size:10px; background:rgba(0,0,0,.28); color:#fff; padding:2px 5px; border-radius:4px; }
+  .ramp-label { display:flex; justify-content:space-between; margin:0 2px var(--sp-2); }
+  .ramp-label .name { font-weight:600; font-size:.95rem; }
+  .ramp-label .role { font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+  .ramp-wrap { margin-bottom:var(--sp-6); }
+
+  .semantic-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--sp-4); }
+  .sem { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); overflow:hidden; }
+  .sem .cap { height:56px; }
+  .sem .info { padding:var(--sp-3) var(--sp-4); }
+  .sem .info .n { font-weight:600; font-size:.95rem; }
+  .sem .info .h { font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+
+  /* ================= TYPOGRAPHY ================= */
+  .type-row { display:flex; align-items:baseline; gap:var(--sp-6); padding:var(--sp-5) 0; border-bottom:1px dashed var(--border); flex-wrap:wrap; }
+  .type-row:last-child { border-bottom:0; }
+  .type-spec { font-family:var(--font-mono); font-size:12px; color:var(--text-muted); min-width:200px; }
+  .type-spec b { color:var(--text-2); font-weight:500; }
+  .fdisplay { font-family:var(--font-display); }
+  .fbody { font-family:var(--font-body); }
+  .fmono { font-family:var(--font-mono); }
+  .font-roles { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sp-4); margin-bottom:var(--sp-10); }
+  .frole { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:var(--sp-6); }
+  .frole .big { font-size:2.6rem; line-height:1; margin-bottom:var(--sp-3); }
+  .frole .role-name { font-family:var(--font-mono); font-size:12px; color:var(--trail-400); text-transform:uppercase; letter-spacing:.1em; }
+  .frole .role-use { color:var(--text-2); font-size:.9rem; margin-top:var(--sp-2); }
+
+  /* ================= SPACING / RADIUS / SHADOW ================= */
+  .token-row { display:flex; align-items:center; gap:var(--sp-4); padding:var(--sp-2) 0; }
+  .token-row .lbl { font-family:var(--font-mono); font-size:12px; color:var(--text-2); width:96px; }
+  .sp-bar { background:var(--trail-500); height:16px; border-radius:3px; }
+  .radius-demo { display:flex; gap:var(--sp-6); flex-wrap:wrap; }
+  .radius-box { width:96px; height:96px; background:linear-gradient(135deg,var(--trail-500),var(--trail-700)); display:flex; align-items:flex-end; justify-content:center; padding:8px; }
+  .radius-box span { font-family:var(--font-mono); font-size:11px; color:#fff; background:rgba(0,0,0,.3); padding:2px 6px; border-radius:4px; }
+  .shadow-demo { display:flex; gap:var(--sp-8); flex-wrap:wrap; }
+  .shadow-box { width:150px; height:96px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12px; color:var(--text-2); }
+  .sh-sm { box-shadow:var(--shadow-sm); } .sh-md { box-shadow:var(--shadow-md); } .sh-lg { box-shadow:var(--shadow-lg); }
+
+  /* ================= COMPONENTS ================= */
+  .comp { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:var(--sp-6); margin-bottom:var(--sp-4); }
+  .comp-title { font-family:var(--font-mono); font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-muted); margin-bottom:var(--sp-5); }
+  .row { display:flex; gap:var(--sp-3); flex-wrap:wrap; align-items:center; }
+
+  /* Buttons */
+  .btn { font-family:var(--font-body); font-weight:600; font-size:.95rem; border-radius:var(--r-md); padding:11px 20px; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:all .18s ease; }
+  .btn-primary { background:var(--trail-500); color:#04231A; }
+  .btn-primary:hover { background:var(--trail-400); transform:translateY(-1px); box-shadow:0 6px 18px color-mix(in srgb, var(--trail-500) 40%, transparent); }
+  .btn-secondary { background:transparent; color:var(--text); border-color:var(--border); }
+  .btn-secondary:hover { border-color:var(--trail-500); color:var(--trail-400); }
+  .btn-ghost { background:transparent; color:var(--text-2); }
+  .btn-ghost:hover { color:var(--text); background:var(--surface-2); }
+  .btn-ember { background:var(--ember-400); color:#3A2506; }
+  .btn-ember:hover { background:var(--ember-300); transform:translateY(-1px); }
+  .btn:disabled { opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+
+  /* Inputs */
+  .field { display:flex; flex-direction:column; gap:6px; max-width:420px; }
+  .field label { font-size:.85rem; font-weight:500; color:var(--text-2); }
+  .input, .textarea { font-family:var(--font-body); font-size:.95rem; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:var(--r-md); padding:11px 14px; transition:border .18s ease, box-shadow .18s ease; }
+  .input::placeholder, .textarea::placeholder { color:var(--text-muted); }
+  .input:focus, .textarea:focus { outline:none; border-color:var(--trail-500); box-shadow:0 0 0 3px color-mix(in srgb, var(--trail-500) 22%, transparent); }
+  .textarea { min-height:96px; resize:vertical; }
+
+  /* Chips / badges */
+  .chip { font-size:.8rem; font-weight:500; padding:5px 12px; border-radius:var(--r-full); display:inline-flex; align-items:center; gap:6px; }
+  .chip-dot::before { content:""; width:8px; height:8px; border-radius:50%; background:currentColor; }
+  .lang { font-family:var(--font-mono); font-size:.78rem; font-weight:500; padding:5px 11px; border-radius:var(--r-full); display:inline-flex; align-items:center; gap:7px; background:var(--surface-2); color:var(--text); border:1px solid var(--border); }
+  .lang i { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .qbadge { font-family:var(--font-mono); font-size:.72rem; font-weight:500; text-transform:uppercase; letter-spacing:.06em; padding:4px 10px; border-radius:var(--r-sm); }
+
+  /* Adherence chip */
+  .adh { display:inline-flex; align-items:center; gap:8px; font-size:.82rem; font-weight:600; padding:5px 12px 5px 8px; border-radius:var(--r-full); background:color-mix(in srgb, var(--trail-500) 14%, transparent); color:var(--trail-400); border:1px solid color-mix(in srgb, var(--trail-500) 30%, transparent); }
+  .adh .n { font-family:var(--font-mono); }
+
+  /* Product cards */
+  .card-demo { display:grid; grid-template-columns:repeat(2,1fr); gap:var(--sp-4); }
+  .p-session { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-lg); padding:var(--sp-5); transition:border .2s ease, transform .2s ease; }
+  .p-session:hover { border-color:var(--trail-600); transform:translateY(-2px); }
+  .p-session .role { font-size:1.05rem; font-weight:600; font-family:var(--font-display); }
+  .p-session .sub { font-size:.8rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px; }
+  .score { font-family:var(--font-display); font-weight:700; font-size:1.8rem; color:var(--trail-400); }
+  .score small { font-size:.9rem; color:var(--text-muted); font-weight:400; }
+  .p-repo { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-lg); padding:var(--sp-5); display:flex; gap:var(--sp-4); align-items:flex-start; }
+  .p-repo .check { width:20px; height:20px; border-radius:6px; border:2px solid var(--trail-500); background:var(--trail-500); flex:none; display:flex; align-items:center; justify-content:center; margin-top:2px; }
+  .p-repo .rname { font-weight:600; font-family:var(--font-mono); font-size:.95rem; }
+  .p-repo .rdesc { font-size:.85rem; color:var(--text-2); margin:4px 0 8px; }
+
+  /* Code block */
+  .codeblock { background:var(--slate-950); border:1px solid var(--border); border-radius:var(--r-md); padding:var(--sp-5); font-family:var(--font-mono); font-size:.85rem; line-height:1.7; overflow-x:auto; color:var(--slate-300); }
+  [data-theme="light"] .codeblock { background:var(--slate-900); color:var(--slate-200); }
+  .codeblock .k { color:var(--q-scenario); } .codeblock .s { color:var(--trail-300); } .codeblock .c { color:var(--text-muted); } .codeblock .f { color:var(--ember-300); }
+
+  /* Skeleton */
+  .skeleton { background:linear-gradient(90deg, var(--surface-2) 25%, color-mix(in srgb,var(--surface-2) 60%, var(--text-muted) 20%) 37%, var(--surface-2) 63%); background-size:400% 100%; animation:shimmer 1.4s ease infinite; border-radius:var(--r-sm); }
+  @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+  /* ================= SIGNATURE: TRAIL STEPPER ================= */
+  .signature-note { display:inline-flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:12px; color:var(--ember-400); text-transform:uppercase; letter-spacing:.1em; margin-bottom:var(--sp-4); }
+  .trail { position:relative; display:flex; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-xl); padding:var(--sp-10) var(--sp-8) var(--sp-8); }
+  .trail-line { position:absolute; top:calc(var(--sp-10) + 21px); left:12%; right:12%; height:3px; background:var(--border); border-radius:2px; }
+  .trail-line .fill { position:absolute; left:0; top:0; height:100%; width:41%; background:linear-gradient(90deg,var(--trail-500),var(--ember-400)); border-radius:2px; }
+  .node { position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:10px; width:44px; text-align:center; }
+  .node .dot { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:600; font-size:.85rem; border:2px solid var(--border); background:var(--bg); color:var(--text-muted); transition:all .3s ease; }
+  .node.done .dot { background:var(--trail-500); border-color:var(--trail-500); color:#04231A; }
+  .node.active .dot { background:var(--bg); border-color:var(--ember-400); color:var(--ember-400); box-shadow:0 0 0 5px color-mix(in srgb,var(--ember-400) 18%, transparent); }
+  .node .nlabel { font-size:.82rem; font-weight:500; color:var(--text-2); white-space:nowrap; }
+  .node.active .nlabel { color:var(--text); font-weight:600; }
+
+  /* ================= VOICE ================= */
+  .voice-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-4); }
+  .voice { border-radius:var(--r-lg); padding:var(--sp-5); border:1px solid var(--border); }
+  .voice.do { background:color-mix(in srgb,var(--trail-500) 8%, var(--surface)); }
+  .voice.dont { background:color-mix(in srgb,var(--danger) 7%, var(--surface)); }
+  .voice .tag { font-family:var(--font-mono); font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; margin-bottom:var(--sp-3); display:flex; align-items:center; gap:6px; }
+  .voice.do .tag { color:var(--trail-400); } .voice.dont .tag { color:var(--danger); }
+  .voice p { font-size:.95rem; margin-bottom:8px; color:var(--text); }
+  .voice p:last-child { margin-bottom:0; }
+  .voice .q { color:var(--text-2); font-style:italic; }
+
+  /* ================= TOKENS ================= */
+  .tokens { background:var(--slate-950); border:1px solid var(--border); border-radius:var(--r-lg); padding:var(--sp-6); font-family:var(--font-mono); font-size:.82rem; line-height:1.9; color:var(--slate-300); overflow-x:auto; }
+  [data-theme="light"] .tokens { background:var(--slate-900); color:var(--slate-200); }
+  .tokens .p { color:var(--trail-300); } .tokens .v { color:var(--ember-300); } .tokens .cm { color:var(--text-muted); }
+
+  footer { padding:var(--sp-12) 0 var(--sp-16); color:var(--text-muted); font-size:.9rem; }
+  footer .mono { color:var(--text-2); }
+
+  @media (max-width:820px) {
+    .cols-2,.cols-3,.cols-4,.semantic-grid,.font-roles,.card-demo,.voice-grid,.ramp { grid-template-columns:1fr; }
+    .ramp { grid-template-columns:repeat(5,1fr); }
+    .ramp.short { grid-template-columns:repeat(4,1fr); }
+    .trail { overflow-x:auto; gap:var(--sp-8); justify-content:flex-start; }
+    .trail-line { display:none; }
+    .type-spec { min-width:100%; }
+  }
+  @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } html { scroll-behavior:auto; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="wordmark">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M5 21 L11 13 L15 16 L21 6" stroke="var(--trail-400)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="5" cy="21" r="2.4" fill="var(--trail-400)"/>
+          <circle cx="11" cy="13" r="2.4" fill="var(--trail-400)"/>
+          <circle cx="15" cy="16" r="2.4" fill="var(--ember-400)"/>
+          <path d="M21 6 L21 2 L25 3.4 L21 5" fill="var(--ember-400)"/>
+          <circle cx="21" cy="6" r="1.4" fill="var(--ember-400)"/>
+        </svg>
+        Interview<span class="b">Trail</span>
+      </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema claro e escuro">
+        <span id="themeLabel">Tema claro</span>
+      </button>
+    </div>
+
+    <div class="hero-body">
+      <span class="eyebrow">Style Guide · v1.0</span>
+      <h1 style="margin-top:var(--sp-4)">A linguagem visual da trilha de preparação.</h1>
+      <p class="lede">O sistema de design do InterviewTrail: cores, tipografia, componentes e voz. Feito para equilibrar credibilidade técnica e acolhimento — porque o produto existe para reduzir a insegurança de quem está começando, não para intimidar.</p>
+      <div class="hero-meta">
+        <span class="meta-pill">Projeto: <b>InterviewTrail</b></span>
+        <span class="meta-pill">Equipe: <b>Trail Blazers</b></span>
+        <span class="meta-pill">Stack: <b>React + NestJS</b></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 01 · MARCA -->
+  <section class="block">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Marca &amp; personalidade</h2></div>
+    <p class="sec-intro">A metáfora central é a <b>trilha</b>: preparar-se para uma entrevista é uma jornada com marcos, e a cada etapa o candidato ganha clareza. Duas forças guiam cada decisão de interface.</p>
+    <div class="grid cols-3">
+      <div class="pcard"><h4>Acolhedor</h4><p>O público é dev júnior, muitas vezes ansioso. A interface tranquiliza: sem julgamento, sem jargão desnecessário, sempre indicando o próximo passo.</p></div>
+      <div class="pcard"><h4>Técnico e preciso</h4><p>Feito por e para quem programa. Monospace para código, badges de tecnologia, dados reais. Credibilidade se constrói no detalhe.</p></div>
+      <div class="pcard"><h4>Orientado a progresso</h4><p>Tudo comunica avanço. A trilha de etapas, os indicadores de aderência e as notas mostram evolução, não veredito.</p></div>
+    </div>
+  </section>
+
+  <!-- 02 · CORES -->
+  <section class="block">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Cores</h2></div>
+    <p class="sec-intro">Base sóbria em grafite frio, cor de marca em esmeralda-teal (crescimento, confiança) e um accent âmbar reservado para chamadas de ação e destaques de progresso. Todos os tokens funcionam em tema claro e escuro.</p>
+
+    <div class="ramp-wrap">
+      <div class="ramp-label"><span class="name">Trail — Primária</span><span class="role">--trail-*</span></div>
+      <div class="ramp">
+        <div class="swatch" style="background:var(--trail-50)"><span style="background:rgba(0,0,0,.5)">50</span></div>
+        <div class="swatch" style="background:var(--trail-100)"><span style="background:rgba(0,0,0,.5)">100</span></div>
+        <div class="swatch" style="background:var(--trail-200)"><span style="background:rgba(0,0,0,.5)">200</span></div>
+        <div class="swatch" style="background:var(--trail-300)"><span style="background:rgba(0,0,0,.5)">300</span></div>
+        <div class="swatch" style="background:var(--trail-400)"><span>400</span></div>
+        <div class="swatch" style="background:var(--trail-500)"><span>500</span></div>
+        <div class="swatch" style="background:var(--trail-600)"><span>600</span></div>
+        <div class="swatch" style="background:var(--trail-700)"><span>700</span></div>
+        <div class="swatch" style="background:var(--trail-800)"><span>800</span></div>
+        <div class="swatch" style="background:var(--trail-900)"><span>900</span></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="align-items:start">
+      <div class="ramp-wrap">
+        <div class="ramp-label"><span class="name">Ember — Accent</span><span class="role">--ember-*</span></div>
+        <div class="ramp short">
+          <div class="swatch" style="background:var(--ember-100)"><span style="background:rgba(0,0,0,.5)">100</span></div>
+          <div class="swatch" style="background:var(--ember-300)"><span style="background:rgba(0,0,0,.5)">300</span></div>
+          <div class="swatch" style="background:var(--ember-400)"><span style="background:rgba(0,0,0,.4)">400</span></div>
+          <div class="swatch" style="background:var(--ember-600)"><span>600</span></div>
+        </div>
+      </div>
+      <div class="ramp-wrap">
+        <div class="ramp-label"><span class="name">Slate — Neutros</span><span class="role">--slate-*</span></div>
+        <div class="ramp short" style="grid-template-columns:repeat(5,1fr)">
+          <div class="swatch" style="background:var(--slate-100)"><span style="background:rgba(0,0,0,.5)">100</span></div>
+          <div class="swatch" style="background:var(--slate-300)"><span style="background:rgba(0,0,0,.5)">300</span></div>
+          <div class="swatch" style="background:var(--slate-500)"><span>500</span></div>
+          <div class="swatch" style="background:var(--slate-700)"><span>700</span></div>
+          <div class="swatch" style="background:var(--slate-900)"><span>900</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h4 style="font-size:1.05rem; margin:var(--sp-8) 0 var(--sp-4)">Semânticas</h4>
+    <div class="semantic-grid">
+      <div class="sem"><div class="cap" style="background:var(--success)"></div><div class="info"><div class="n">Sucesso</div><div class="h">#12B886</div></div></div>
+      <div class="sem"><div class="cap" style="background:var(--warning)"></div><div class="info"><div class="n">Atenção</div><div class="h">#F97316</div></div></div>
+      <div class="sem"><div class="cap" style="background:var(--danger)"></div><div class="info"><div class="n">Erro</div><div class="h">#EF4444</div></div></div>
+      <div class="sem"><div class="cap" style="background:var(--info)"></div><div class="info"><div class="n">Informação</div><div class="h">#3B82F6</div></div></div>
+    </div>
+
+    <h4 style="font-size:1.05rem; margin:var(--sp-8) 0 var(--sp-4)">Tipos de pergunta</h4>
+    <p class="sec-intro" style="margin-top:0">Cada tipo de pergunta da entrevista tem uma cor própria, usada nos badges. A cor é constante em toda a aplicação.</p>
+    <div class="row">
+      <span class="qbadge" style="background:color-mix(in srgb,var(--q-logic) 16%,transparent); color:var(--q-logic)">Lógica</span>
+      <span class="qbadge" style="background:color-mix(in srgb,var(--q-scenario) 16%,transparent); color:var(--q-scenario)">Cenário</span>
+      <span class="qbadge" style="background:color-mix(in srgb,var(--q-project) 16%,transparent); color:var(--q-project)">Projeto</span>
+      <span class="qbadge" style="background:color-mix(in srgb,var(--q-code) 18%,transparent); color:var(--ember-400)">Análise de código</span>
+    </div>
+
+    <h4 style="font-size:1.05rem; margin:var(--sp-8) 0 var(--sp-4)">Linguagens</h4>
+    <p class="sec-intro" style="margin-top:0">Badges de linguagem usam as cores convencionais de cada tecnologia, para reconhecimento imediato.</p>
+    <div class="row">
+      <span class="lang"><i style="background:#3178C6"></i>TypeScript</span>
+      <span class="lang"><i style="background:#F1E05A"></i>JavaScript</span>
+      <span class="lang"><i style="background:#339933"></i>Node.js</span>
+      <span class="lang"><i style="background:#61DAFB"></i>React</span>
+      <span class="lang"><i style="background:#3572A5"></i>Python</span>
+      <span class="lang"><i style="background:#00ADD8"></i>Go</span>
+    </div>
+  </section>
+
+  <!-- 03 · TIPOGRAFIA -->
+  <section class="block">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Tipografia</h2></div>
+    <p class="sec-intro">Três vozes com papéis definidos. Um display geométrico com toque técnico, um corpo neutro e altamente legível, e uma monospace que carrega o DNA de código.</p>
+
+    <div class="font-roles">
+      <div class="frole"><div class="big fdisplay">Ag</div><div class="role-name">Space Grotesk</div><div class="role-use">Display &amp; títulos. Usada com moderação, carrega a personalidade.</div></div>
+      <div class="frole"><div class="big fbody">Ag</div><div class="role-name">Inter</div><div class="role-use">Corpo &amp; interface. O cavalo de batalha da leitura.</div></div>
+      <div class="frole"><div class="big fmono">Ag</div><div class="role-name">JetBrains Mono</div><div class="role-use">Código, dados, badges. O detalhe técnico.</div></div>
+    </div>
+
+    <div class="comp">
+      <div class="type-row"><div class="type-spec"><b>Display</b> · Space Grotesk 700 · 56px</div><div class="fdisplay" style="font-size:3.5rem; font-weight:700; letter-spacing:-.03em">Chegue preparado</div></div>
+      <div class="type-row"><div class="type-spec"><b>H1</b> · Space Grotesk 600 · 40px</div><div class="fdisplay" style="font-size:2.5rem; font-weight:600">Sua trilha começa aqui</div></div>
+      <div class="type-row"><div class="type-spec"><b>H2</b> · Space Grotesk 600 · 32px</div><div class="fdisplay" style="font-size:2rem; font-weight:600">Relatório da entrevista</div></div>
+      <div class="type-row"><div class="type-spec"><b>H3</b> · Space Grotesk 600 · 24px</div><div class="fdisplay" style="font-size:1.5rem; font-weight:600">Pontos fortes</div></div>
+      <div class="type-row"><div class="type-spec"><b>Body Large</b> · Inter 400 · 18px</div><div class="fbody" style="font-size:1.125rem">A IA gera a entrevista a partir da vaga e do seu código real.</div></div>
+      <div class="type-row"><div class="type-spec"><b>Body</b> · Inter 400 · 16px</div><div class="fbody">Selecione os repositórios que você quer que a IA analise nesta sessão.</div></div>
+      <div class="type-row"><div class="type-spec"><b>Small</b> · Inter 400 · 14px</div><div class="fbody" style="font-size:.875rem; color:var(--text-2)">Acessamos apenas os repositórios que você escolher.</div></div>
+      <div class="type-row"><div class="type-spec"><b>Eyebrow</b> · Mono 500 · 12px · caps</div><div class="eyebrow">Como funciona</div></div>
+      <div class="type-row"><div class="type-spec"><b>Code</b> · JetBrains Mono 400 · 14px</div><div class="fmono" style="font-size:.875rem; color:var(--trail-400)">const useAuth = () =&gt; useContext(AuthContext)</div></div>
+    </div>
+  </section>
+
+  <!-- 04 · ESPAÇAMENTO / RAIO / ELEVAÇÃO -->
+  <section class="block">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Espaçamento, raio &amp; elevação</h2></div>
+    <p class="sec-intro">Escala de espaçamento em base 4, para ritmo consistente. Raios suaves e sombras discretas — a interface é calma, o destaque fica para o conteúdo.</p>
+
+    <div class="grid cols-2" style="align-items:start; gap:var(--sp-10)">
+      <div>
+        <h4 style="font-size:1rem; margin-bottom:var(--sp-4)">Espaçamento</h4>
+        <div class="token-row"><span class="lbl">--sp-1 · 4</span><div class="sp-bar" style="width:4px"></div></div>
+        <div class="token-row"><span class="lbl">--sp-2 · 8</span><div class="sp-bar" style="width:8px"></div></div>
+        <div class="token-row"><span class="lbl">--sp-4 · 16</span><div class="sp-bar" style="width:16px"></div></div>
+        <div class="token-row"><span class="lbl">--sp-6 · 24</span><div class="sp-bar" style="width:24px"></div></div>
+        <div class="token-row"><span class="lbl">--sp-8 · 32</span><div class="sp-bar" style="width:32px"></div></div>
+        <div class="token-row"><span class="lbl">--sp-12 · 48</span><div class="sp-bar" style="width:48px"></div></div>
+        <div class="token-row"><span class="lbl">--sp-16 · 64</span><div class="sp-bar" style="width:64px"></div></div>
+      </div>
+      <div>
+        <h4 style="font-size:1rem; margin-bottom:var(--sp-4)">Raio de borda</h4>
+        <div class="radius-demo">
+          <div class="radius-box" style="border-radius:var(--r-sm)"><span>sm 6</span></div>
+          <div class="radius-box" style="border-radius:var(--r-md)"><span>md 10</span></div>
+          <div class="radius-box" style="border-radius:var(--r-lg)"><span>lg 14</span></div>
+          <div class="radius-box" style="border-radius:var(--r-xl)"><span>xl 20</span></div>
+        </div>
+        <h4 style="font-size:1rem; margin:var(--sp-8) 0 var(--sp-4)">Elevação</h4>
+        <div class="shadow-demo">
+          <div class="shadow-box sh-sm">shadow-sm</div>
+          <div class="shadow-box sh-md">shadow-md</div>
+          <div class="shadow-box sh-lg">shadow-lg</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 · ASSINATURA -->
+  <section class="block">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Elemento de assinatura — a trilha</h2></div>
+    <span class="signature-note">◆ O componente que define o produto</span>
+    <p class="sec-intro">O indicador de etapas não é um stepper genérico de bolinhas: é a <b>trilha</b> do candidato, com marcos numerados e um progresso que se preenche do teal ao âmbar. A numeração é justificada porque o fluxo é uma sequência real — quatro etapas na ordem exata em que acontecem.</p>
+    <div class="trail">
+      <div class="trail-line"><div class="fill"></div></div>
+      <div class="node done"><div class="dot">01</div><div class="nlabel">Vaga</div></div>
+      <div class="node done"><div class="dot">02</div><div class="nlabel">Repositórios</div></div>
+      <div class="node active"><div class="dot">03</div><div class="nlabel">Entrevista</div></div>
+      <div class="node"><div class="dot">04</div><div class="nlabel">Relatório</div></div>
+    </div>
+  </section>
+
+  <!-- 06 · COMPONENTES -->
+  <section class="block">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Componentes</h2></div>
+    <p class="sec-intro">Os blocos de construção da interface. Cada botão diz exatamente o que faz; cada estado tem tratamento previsto.</p>
+
+    <div class="comp">
+      <div class="comp-title">Botões</div>
+      <div class="row">
+        <button class="btn btn-primary">Entrar com GitHub</button>
+        <button class="btn btn-secondary">Voltar ao dashboard</button>
+        <button class="btn btn-ember">Iniciar entrevista</button>
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-primary" disabled>Continuar</button>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-title">Campos</div>
+      <div class="row" style="align-items:flex-start; gap:var(--sp-8)">
+        <div class="field"><label>Descrição da vaga</label><textarea class="textarea" placeholder="Cole aqui a descrição da vaga…"></textarea></div>
+        <div class="field"><label>Sua resposta</label><input class="input" type="text" placeholder="Digite sua resposta…"></div>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-title">Chips &amp; indicadores</div>
+      <div class="row">
+        <span class="chip chip-dot" style="background:color-mix(in srgb,var(--info) 16%,transparent); color:var(--info)">Júnior</span>
+        <span class="lang"><i style="background:#3178C6"></i>TypeScript</span>
+        <span class="qbadge" style="background:color-mix(in srgb,var(--q-code) 18%,transparent); color:var(--ember-400)">Análise de código</span>
+        <span class="adh">Aderência à vaga <span class="n">72%</span></span>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-title">Cards de produto</div>
+      <div class="card-demo">
+        <div class="p-session">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start">
+            <div><div class="role">Full-Stack Júnior — Acme</div><div class="sub">14 jul 2026 · 8 perguntas</div></div>
+            <div class="score">78<small>/100</small></div>
+          </div>
+          <div class="row" style="margin-top:var(--sp-4)"><span class="adh">Aderência <span class="n">72%</span></span></div>
+        </div>
+        <div class="p-repo">
+          <div class="check"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2 4.8 8.5 9.5 3.5" stroke="#04231A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div>
+            <div class="rname">api-ecommerce</div>
+            <div class="rdesc">API REST de catálogo e pedidos com autenticação JWT.</div>
+            <span class="lang"><i style="background:#339933"></i>Node.js</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="comp-title">Bloco de código — pergunta de análise</div>
+      <div class="codeblock"><span class="c">// UserContext.tsx</span>
+<span class="k">export const</span> UserProvider = ({ children }) =&gt; {
+  <span class="k">const</span> [user, setUser] = <span class="f">useState</span>(<span class="k">null</span>);
+  <span class="k">return</span> &lt;UserContext.Provider value={{ user, setUser }}&gt;{children}&lt;/UserContext.Provider&gt;;
+};</div>
+      <p style="margin-top:var(--sp-4); color:var(--text-2); font-size:.95rem"><span class="qbadge" style="background:color-mix(in srgb,var(--q-code) 18%,transparent); color:var(--ember-400)">Análise de código</span> &nbsp;Você optou por um contexto global para o usuário em vez de passar props. O que motivou essa escolha e como ela se comportaria se o app crescesse bastante?</p>
+    </div>
+
+    <div class="comp">
+      <div class="comp-title">Estado de carregamento</div>
+      <div style="display:flex; flex-direction:column; gap:10px; max-width:420px">
+        <div class="skeleton" style="height:14px; width:40%"></div>
+        <div class="skeleton" style="height:14px; width:90%"></div>
+        <div class="skeleton" style="height:14px; width:75%"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 · VOZ -->
+  <section class="block">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Voz &amp; texto</h2></div>
+    <p class="sec-intro">As palavras são material de design. Voz ativa, sem floreio, no tom da interface — nunca no da pessoa. Erros não pedem desculpa e nunca são vagos; telas vazias são um convite para agir.</p>
+    <div class="voice-grid">
+      <div class="voice do">
+        <div class="tag">✓ Faça</div>
+        <p>Botão de ação diz o que acontece:<br><span class="q">"Iniciar entrevista"</span></p>
+        <p>Estado vazio convida:<br><span class="q">"Sua trilha começa aqui. Crie sua primeira entrevista."</span></p>
+        <p>Erro é específico e aponta a saída:<br><span class="q">"Não foi possível ler seus repositórios. Tente novamente em instantes."</span></p>
+      </div>
+      <div class="voice dont">
+        <div class="tag">✕ Evite</div>
+        <p>Rótulo genérico do sistema:<br><span class="q">"Enviar"</span></p>
+        <p>Vazio sem direção:<br><span class="q">"Nenhum dado encontrado."</span></p>
+        <p>Erro que se desculpa e não explica:<br><span class="q">"Ops! Algo deu errado :("</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 · TOKENS -->
+  <section class="block" style="border-bottom:0">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Tokens para o código</h2></div>
+    <p class="sec-intro">Ponto de partida das CSS custom properties. Defina no <span class="mono">:root</span> e sobrescreva as superfícies por tema. Os componentes React devem consumir estes tokens, nunca hex soltos.</p>
+    <div class="tokens"><span class="cm">/* Cor de marca e accent */</span>
+<span class="p">--trail-500</span>: <span class="v">#12B886</span>;   <span class="cm">/* primária / sucesso */</span>
+<span class="p">--ember-400</span>: <span class="v">#F5A623</span>;   <span class="cm">/* accent / progresso */</span>
+
+<span class="cm">/* Superfícies — tema escuro (padrão) */</span>
+<span class="p">--bg</span>: <span class="v">#0C111A</span>;  <span class="p">--surface</span>: <span class="v">#141B26</span>;  <span class="p">--border</span>: <span class="v">#26303F</span>;
+<span class="p">--text</span>: <span class="v">#EDF1F5</span>;  <span class="p">--text-2</span>: <span class="v">#8695A8</span>;
+
+<span class="cm">/* Superfícies — tema claro */</span>
+<span class="p">--bg</span>: <span class="v">#F6F8FA</span>;  <span class="p">--surface</span>: <span class="v">#FFFFFF</span>;  <span class="p">--border</span>: <span class="v">#DCE3EB</span>;
+<span class="p">--text</span>: <span class="v">#141B26</span>;  <span class="p">--text-2</span>: <span class="v">#45516A</span>;
+
+<span class="cm">/* Tipografia */</span>
+<span class="p">--font-display</span>: <span class="v">'Space Grotesk'</span>;
+<span class="p">--font-body</span>: <span class="v">'Inter'</span>;
+<span class="p">--font-mono</span>: <span class="v">'JetBrains Mono'</span>;
+
+<span class="cm">/* Base 4 · raios */</span>
+<span class="p">--sp-4</span>: <span class="v">16px</span>;  <span class="p">--r-md</span>: <span class="v">10px</span>;  <span class="p">--r-lg</span>: <span class="v">14px</span>;</div>
+  </section>
+
+  <footer>
+    <span class="wordmark" style="font-size:18px; margin-bottom:8px">Interview<span class="b">Trail</span></span><br>
+    Style Guide v1.0 · Equipe <span class="mono">Trail Blazers</span> · Documento complementar ao System Design e ao Documento de Requisitos.
+  </footer>
+
+</main>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('themeToggle');
+    var label = document.getElementById('themeLabel');
+    function setLabel() {
+      label.textContent = root.getAttribute('data-theme') === 'dark' ? 'Tema claro' : 'Tema escuro';
+    }
+    setLabel();
+    btn.addEventListener('click', function () {
+      root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+      setLabel();
+    });
+  })();
+</script>
+</body>
+</html>
