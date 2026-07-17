@@ -1,10 +1,35 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <title>InterviewTrail — Chegue preparado para a entrevista técnica</title>
+    <meta
+      name="description"
+      content="O InterviewTrail lê a vaga que você quer, analisa seus repositórios do GitHub e monta uma entrevista técnica sob medida."
+    />
+    <script>
+      // Aplica o tema salvo antes da primeira pintura, senão a página pisca no
+      // tema escuro e só então troca para o claro. Mantido inline e sem módulo
+      // de propósito: precisa rodar de forma síncrona, antes do bundle.
+      (function () {
+        try {
+          var saved = localStorage.getItem("interviewtrail:theme");
+          if (saved === "light" || saved === "dark") {
+            document.documentElement.dataset.theme = saved;
+          }
+        } catch (e) {
+          /* storage indisponível: segue com o tema escuro padrão */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
