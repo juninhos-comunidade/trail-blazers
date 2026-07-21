@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SessionStatus {
+  preparing
+  in_progress
+  evaluating
+  completed
+}
+
+enum QuestionType {
+  logic
+  scenario
+  project
+  code_analysis
+}
+
+model User {
+  id                   String   @id @default(uuid()) @db.Uuid
+  githubId             String   @unique @map("github_id")
+  username             String
+  avatarUrl            String?  @map("avatar_url")
+  email                String?
+  githubTokenEncrypted String?  @map("github_token_encrypted")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  jobs     Job[]
+  sessions Session[]
+
+  @@map("users")
+}
+
+model Job {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  rawDescription  String   @map("raw_description")
+  parsedStack     Json?    @map("parsed_stack")
+  parsedSeniority String?  @map("parsed_seniority")
+  parsedSkills    Json?    @map("parsed_skills")
+  parseConfidence Float?   @map("parse_confidence")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@index([userId])
+  @@map("jobs")
+}
+
+model Session {
+  id                 String        @id @default(uuid()) @db.Uuid
+  userId             String        @map("user_id") @db.Uuid
+  jobId              String        @map("job_id") @db.Uuid
+  status             SessionStatus @default(preparing)
+  totalInputTokens   Int           @default(0) @map("total_input_tokens")
+  totalOutputTokens  Int           @default(0) @map("total_output_tokens")
+  estimatedCost      Float         @default(0) @map("estimated_cost")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  completedAt        DateTime?     @map("completed_at")
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  repos     SessionRepo[]
+  questions Question[]
+  report    Report?
+
+  @@index([userId])
+  @@index([jobId])
+  @@map("sessions")
+}
+
+model SessionRepo {
+  id                     String  @id @default(uuid()) @db.Uuid
+  sessionId              String  @map("session_id") @db.Uuid
+  repoFullName           String  @map("repo_full_name")
+  repoUrl                String  @map("repo_url")
+  primaryLanguage        String? @map("primary_language")
+  selectedFilesSnapshot  Json?   @map("selected_files_snapshot")
+  analysisSummary        String? @map("analysis_summary")
+
+  session   Session    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@index([sessionId])
+  @@map("session_repos")
+}
+
+model Question {
+  id            String       @id @default(uuid()) @db.Uuid
+  sessionId     String       @map("session_id") @db.Uuid
+  type          QuestionType
+  orderIndex    Int          @map("order_index")
+  content       String
+  sessionRepoId String?      @map("session_repo_id") @db.Uuid
+  metadata      Json?
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionRepo SessionRepo? @relation(fields: [sessionRepoId], references: [id], onDelete: SetNull)
+  answer      Answer?
+
+  @@index([sessionId])
+  @@index([sessionRepoId])
+  @@map("questions")
+}
+
+model Answer {
+  id         String   @id @default(uuid()) @db.Uuid
+  questionId String   @unique @map("question_id") @db.Uuid
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("answers")
+}
+
+model Report {
+  id              String   @id @default(uuid()) @db.Uuid
+  sessionId       String   @unique @map("session_id") @db.Uuid
+  overallScore    Float    @map("overall_score")
+  dimensionScores Json     @map("dimension_scores")
+  adherenceScore  Float    @map("adherence_score")
+  strengths       Json?
+  gaps            Json?
+  recommendations Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
