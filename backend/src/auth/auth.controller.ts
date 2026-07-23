@@ -2,9 +2,12 @@ import { Controller, Get, Req, Res, UnauthorizedException, UseGuards } from '@ne
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { Public } from './decorators/public.decorator';
 import { GithubAuthGuard } from './github-auth.guard';
 import { GithubUser } from './types/github-user';
 
+// único controller aberto: é por aqui que o usuário obtém o token
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(

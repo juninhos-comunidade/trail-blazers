@@ -34,6 +34,13 @@ export const envValidationSchema = Joi.object({
   }),
   JWT_EXPIRES_IN: Joi.string().default('1d'),
 
+  // Chave AES-256 usada para criptografar o access token do GitHub
+  ENCRYPTION_KEY: Joi.string().length(64).hex().required().messages({
+    'any.required': 'ENCRYPTION_KEY é obrigatória. Gere com: openssl rand -hex 32',
+    'string.length': 'ENCRYPTION_KEY deve ter exatamente 64 caracteres hexadecimais (32 bytes)',
+    'string.hex': 'ENCRYPTION_KEY deve estar em hexadecimal. Gere com: openssl rand -hex 32',
+  }),
+
   // Front-end (destino do redirect após o login)
   FRONTEND_URL: Joi.string().uri().default('http://localhost:3001'),
 });

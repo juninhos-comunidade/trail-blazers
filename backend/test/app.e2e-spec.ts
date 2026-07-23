@@ -16,8 +16,10 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer()).get('/').expect(200).expect('Hello World!');
+  // a rota agora é protegida pelo JwtAuthGuard global; o caminho autenticado
+  // está coberto em auth.e2e-spec.ts (CT-05.2)
+  it('/ (GET) exige autenticação', () => {
+    return request(app.getHttpServer()).get('/').expect(401);
   });
 
   afterEach(async () => {

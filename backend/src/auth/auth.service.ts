@@ -1,19 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { UsersService } from '../users/users.service';
 import { GithubUser } from './types/github-user';
+import { JwtPayload } from './types/jwt-payload';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
+  ) {}
 
   async loginWithGithub(githubUser: GithubUser) {
-    //TODO: persistir/buscar o usuário no banco (model User) e usar o id interno como `sub`
+    const user = await this.usersService.upsertFromGithub(githubUser);
 
-    const payload = {
-      sub: githubUser.githubId,
-      username: githubUser.username,
-      email: githubUser.email,
-      avatarUrl: githubUser.avatarUrl,
+    const payload: JwtPayload = {
+      sub: user.id,
+      username: user.username,
+      email: user.email ?? undefined,
+      avatarUrl: user.avatarUrl ?? undefined,
     };
 
     return {
