@@ -1,9 +1,8 @@
-import { ButtonLink } from "../ui/Button";
+import { AuthCta } from "../auth/AuthCta";
 import { buttonStyles } from "../ui/button-styles";
 import { Container } from "../ui/Container";
 import { Eyebrow } from "../ui/Eyebrow";
-import { GitHubIcon } from "../ui/icons";
-import { paths, sectionIds } from "../../routes/paths";
+import { sectionIds } from "../../routes/paths";
 
 function CodeSample() {
   return (
@@ -78,10 +77,7 @@ export function HeroSection() {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink to={paths.login} size="lg">
-              <GitHubIcon size={18} />
-              Entrar com GitHub
-            </ButtonLink>
+            <AuthCta />
             <a
               href={`#${sectionIds.howItWorks}`}
               className={buttonStyles("secondary", "lg")}

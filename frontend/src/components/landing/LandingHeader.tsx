@@ -1,3 +1,5 @@
+import { useAuth } from "../../auth/useAuth";
+import { UserMenu } from "../auth/UserMenu";
 import { ButtonLink } from "../ui/Button";
 import { buttonStyles } from "../ui/button-styles";
 import { Container } from "../ui/Container";
@@ -7,6 +9,8 @@ import { GitHubIcon } from "../ui/icons";
 import { paths, sectionIds } from "../../routes/paths";
 
 export function LandingHeader() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-[color-mix(in_srgb,var(--color-bg)_88%,transparent)] backdrop-blur-[10px]">
       <Container className="flex items-center justify-between gap-4 py-3.5">
@@ -26,15 +30,19 @@ export function LandingHeader() {
 
           <ThemeToggle />
 
-          <ButtonLink
-            to={paths.login}
-            variant="secondary"
-            size="sm"
-            className="hidden md:inline-flex"
-          >
-            <GitHubIcon />
-            Entrar
-          </ButtonLink>
+          {isAuthenticated ? (
+            <UserMenu />
+          ) : (
+            <ButtonLink
+              to={paths.login}
+              variant="secondary"
+              size="sm"
+              className="hidden md:inline-flex"
+            >
+              <GitHubIcon />
+              Entrar
+            </ButtonLink>
+          )}
         </nav>
       </Container>
     </header>
