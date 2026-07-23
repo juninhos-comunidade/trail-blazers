@@ -1,6 +1,4 @@
-import { ButtonLink } from "../ui/Button";
-import { GitHubIcon } from "../ui/icons";
-import { paths } from "../../routes/paths";
+import { AuthCta } from "../auth/AuthCta";
 
 export function FinalCtaSection() {
   return (
@@ -12,10 +10,7 @@ export function FinalCtaSection() {
         <p className="mb-7.5 text-fg-2">
           Grátis para começar. A primeira entrevista leva uns vinte minutos.
         </p>
-        <ButtonLink to={paths.login} size="lg" className="px-6.5">
-          <GitHubIcon size={18} />
-          Entrar com GitHub
-        </ButtonLink>
+        <AuthCta className="px-6.5" />
       </div>
     </section>
   );

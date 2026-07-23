@@ -1,27 +1,23 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from 'src/users/users.service';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { SignInDto } from './dto/sign-in.dto';
+import { GithubUser } from './types/github-user';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
-  ) {}
+  constructor(private readonly jwtService: JwtService) {}
 
-  async signIn(request: SignInDto): Promise<{ access_token: string }> {
-    const user = await this.usersService.findOne(request.username);
-    if (user?.password !== request.password) {
-      throw new UnauthorizedException();
-    }
-    const payload = { sub: user.userId, username: user.username };
-    return {
-      access_token: await this.jwtService.signAsync(payload),
+  async loginWithGithub(githubUser: GithubUser) {
+    //TODO: persistir/buscar o usuário no banco (model User) e usar o id interno como `sub`
+
+    const payload = {
+      sub: githubUser.githubId,
+      username: githubUser.username,
+      email: githubUser.email,
+      avatarUrl: githubUser.avatarUrl,
     };
-  }
 
-  async signUp(request: SignUpDto): Promise<any> {
-    //implementar signup
+    return {
+      accessToken: await this.jwtService.signAsync(payload),
+    };
   }
 }

@@ -1,38 +1,8 @@
 import { Container } from "../ui/Container";
 import { Eyebrow } from "../ui/Eyebrow";
 import { cn } from "../../lib/cn";
+import { trailSteps } from "../../content/trail-steps";
 import { sectionIds } from "../../routes/paths";
-
-interface Step {
-  number: string;
-  title: string;
-  description: string;
-  tone: "trail" | "ember";
-}
-
-const steps: Step[] = [
-  {
-    number: "01",
-    title: "Cole a vaga",
-    description:
-      "A IA lê a descrição e extrai stack, senioridade e competências-chave.",
-    tone: "trail",
-  },
-  {
-    number: "02",
-    title: "Escolha seus repositórios",
-    description:
-      "Você decide quais projetos entram na análise. Até 3 por sessão — nada é publicado.",
-    tone: "trail",
-  },
-  {
-    number: "03",
-    title: "Faça a entrevista",
-    description:
-      "Perguntas sob medida, no seu ritmo. No final, um relatório honesto do que praticar.",
-    tone: "ember",
-  },
-];
 
 export function HowItWorksSection() {
   return (
@@ -58,7 +28,7 @@ export function HowItWorksSection() {
           </div>
 
           <ol className="grid list-none grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-8 p-0">
-            {steps.map((step) => (
+            {trailSteps.map((step) => (
               <li
                 key={step.number}
                 className="flex flex-col items-center gap-4 text-center"

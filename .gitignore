@@ -59,4 +59,3 @@ frontend/build/
 *.tsbuildinfo
 .env.example.local
 .husky/_
- 
