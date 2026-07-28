@@ -60,3 +60,4 @@ frontend/build/
 .env.example.local
 .husky/_
 .tool-versions
+InterviewTrail.html

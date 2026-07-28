@@ -6,6 +6,7 @@ interface GithubRepoResponse {
   id: number;
   name: string;
   owner: { login: string };
+  description: string | null;
   language: string | null;
   private: boolean;
 }
@@ -43,6 +44,7 @@ export class RepositoriesService {
       id: repo.id,
       owner: repo.owner.login,
       name: repo.name,
+      description: repo.description,
       language: repo.language,
       visibility: repo.private ? 'private' : 'public',
     }));

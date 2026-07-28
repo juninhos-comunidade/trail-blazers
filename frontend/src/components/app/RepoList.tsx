@@ -4,78 +4,177 @@ import { cn } from "@lib/cn";
 import type { RepoSummary } from "@lib/repositories-api";
 import { RepositoryCard } from "@components/app/RepoCard";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 6;
+/** Quantos números de página aparecem por vez, ao redor da página atual. */
+const PAGE_WINDOW = 3;
 
 interface RepositoryListProps {
   repositories: RepoSummary[];
-  selectedId: number | null;
-  onSelect: (repository: RepoSummary) => void;
+  selectedIds: number[];
+  /** Quantidade máxima de repositórios selecionáveis. */
+  limit: number;
+  onToggle: (repository: RepoSummary) => void;
   className?: string;
 }
 
 export function RepositoryList({
   repositories,
-  selectedId,
-  onSelect,
+  selectedIds,
+  limit,
+  onToggle,
   className,
 }: RepositoryListProps) {
-  const [visibleCount, setVisibleCount] = useState(
-    Math.min(PAGE_SIZE, repositories.length),
-  );
+  const [page, setPage] = useState(1);
+
+  const pageCount = Math.max(1, Math.ceil(repositories.length / PAGE_SIZE));
+  // A lista pode encolher entre recarregamentos e deixar a página atual vazia.
+  const currentPage = Math.min(page, pageCount);
 
   if (repositories.length === 0) {
     return (
       <div
         className={cn(
-          "flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center",
+          "flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface px-6 py-16 text-center",
           className,
         )}
       >
         <p className="text-[15px] text-fg-2">
-          Nenhum repositório público encontrado.
+          Nenhum repositório encontrado na sua conta do GitHub.
         </p>
       </div>
     );
   }
 
-  const visibleRepositories = repositories.slice(0, visibleCount);
-  const hasMore = visibleCount < repositories.length;
+  const full = selectedIds.length >= limit;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const visibleRepositories = repositories.slice(start, start + PAGE_SIZE);
 
   return (
-    <div
-      className={cn(
-        "flex max-h-140 flex-col gap-3 overflow-y-auto rounded-xl border border-border bg-surface-2/40 p-3",
-        className,
-      )}
-    >
-      {visibleRepositories.map((repository) => (
-        <RepositoryCard
-          key={repository.id}
-          repository={repository}
-          selected={repository.id === selectedId}
-          onSelect={onSelect}
-        />
-      ))}
+    <div className={className}>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-3.5">
+        {visibleRepositories.map((repository) => {
+          const selected = selectedIds.includes(repository.id);
 
-      <div className="flex justify-center py-2">
-        {hasMore ? (
-          <button
-            type="button"
-            onClick={() =>
-              setVisibleCount((count) =>
-                Math.min(count + PAGE_SIZE, repositories.length),
-              )
-            }
-            className="font-mono text-[12.5px] font-medium text-trail-text hover:underline"
-          >
-            Ver mais repositórios
-          </button>
-        ) : (
-          <p className="font-mono text-[12.5px] text-fg-muted">
-            Não há mais repositórios.
-          </p>
-        )}
+          return (
+            <RepositoryCard
+              key={repository.id}
+              repository={repository}
+              selected={selected}
+              locked={full && !selected}
+              onToggle={onToggle}
+            />
+          );
+        })}
       </div>
+
+      {pageCount > 1 && (
+        <RepositoryPagination
+          page={currentPage}
+          pageCount={pageCount}
+          total={repositories.length}
+          rangeStart={start + 1}
+          rangeEnd={start + visibleRepositories.length}
+          onChange={setPage}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * Números visíveis: uma janela deslizante de até `PAGE_WINDOW` páginas centrada
+ * na atual, para o rodapé não virar uma régua de números em contas com muitos
+ * repositórios.
+ */
+function pageWindow(page: number, pageCount: number): number[] {
+  const size = Math.min(PAGE_WINDOW, pageCount);
+  const first = Math.min(
+    Math.max(1, page - Math.floor(size / 2)),
+    pageCount - size + 1,
+  );
+
+  return Array.from({ length: size }, (_, index) => first + index);
+}
+
+const pageButton =
+  "flex size-8 flex-none items-center justify-center rounded-md border font-mono text-[12.5px] " +
+  "transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45";
+
+const stepButton = cn(
+  pageButton,
+  "border-border text-fg-2",
+  "enabled:hover:border-trail-500 enabled:hover:text-trail-text",
+);
+
+interface RepositoryPaginationProps {
+  page: number;
+  pageCount: number;
+  total: number;
+  rangeStart: number;
+  rangeEnd: number;
+  onChange: (page: number) => void;
+}
+
+function RepositoryPagination({
+  page,
+  pageCount,
+  total,
+  rangeStart,
+  rangeEnd,
+  onChange,
+}: RepositoryPaginationProps) {
+  return (
+    <nav
+      aria-label="Paginação dos repositórios"
+      className="mt-6 flex flex-wrap items-center justify-between gap-3"
+    >
+      <p aria-live="polite" className="font-mono text-[11.5px] text-fg-muted">
+        {rangeStart}–{rangeEnd} de {total} · página {page} de {pageCount}
+      </p>
+
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onChange(page - 1)}
+          disabled={page === 1}
+          aria-label="Página anterior"
+          className={stepButton}
+        >
+          ←
+        </button>
+
+        {pageWindow(page, pageCount).map((number) => {
+          const current = number === page;
+
+          return (
+            <button
+              key={number}
+              type="button"
+              onClick={() => onChange(number)}
+              aria-label={`Página ${number}`}
+              aria-current={current ? "page" : undefined}
+              className={cn(
+                pageButton,
+                current
+                  ? "border-trail-500 bg-trail-500 font-semibold text-on-trail"
+                  : "border-border text-fg-2 hover:border-trail-500 hover:text-trail-text",
+              )}
+            >
+              {number}
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => onChange(page + 1)}
+          disabled={page === pageCount}
+          aria-label="Próxima página"
+          className={stepButton}
+        >
+          →
+        </button>
+      </div>
+    </nav>
   );
 }

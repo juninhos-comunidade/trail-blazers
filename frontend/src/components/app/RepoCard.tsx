@@ -1,5 +1,7 @@
+import type { KeyboardEvent } from "react";
+
 import { cn } from "@lib/cn";
-import { GlobeIcon, LockIcon } from "@components/ui/icons";
+import { CheckIcon } from "@components/ui/icons";
 import type { RepoSummary } from "@lib/repositories-api";
 
 const languageColors: Record<string, string> = {
@@ -27,64 +29,109 @@ function languageColor(language: string) {
 interface RepositoryCardProps {
   repository: RepoSummary;
   selected?: boolean;
-  onSelect?: (repository: RepoSummary) => void;
+  /** Limite de seleção atingido e este card não está selecionado. */
+  locked?: boolean;
+  onToggle?: (repository: RepoSummary) => void;
   className?: string;
 }
 
 export function RepositoryCard({
   repository,
   selected = false,
-  onSelect,
+  locked = false,
+  onToggle,
   className,
 }: RepositoryCardProps) {
+  const toggle = () => {
+    if (!locked) onToggle?.(repository);
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      toggle();
+    }
+  };
+
   return (
-    <button
-      type="button"
-      onClick={() => onSelect?.(repository)}
-      aria-pressed={selected}
+    <div
       className={cn(
-        "flex w-full flex-col gap-3 rounded-lg border bg-surface p-4 text-left transition-all duration-200",
-        selected
-          ? "border-trail-500 shadow-[0_0_0_1px_var(--color-trail-500)]"
-          : "border-border hover:border-trail-500/60 hover:bg-surface-2",
+        "h-full transition-opacity duration-200",
+        locked ? "cursor-not-allowed opacity-45" : "cursor-pointer",
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 truncate font-mono text-[14px]">
-          <span className="text-fg-muted">{repository.owner}/</span>
-          <span className="font-semibold text-fg">{repository.name}</span>
-        </p>
-
-        <span
-          className={cn(
-            "inline-flex flex-none items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.06em]",
-            repository.visibility === "private"
-              ? "border-[--alpha(var(--color-ember-400)/40%)] text-ember-text"
-              : "border-border text-fg-2",
-          )}
-        >
-          {repository.visibility === "private" ? (
-            <LockIcon size={11} />
-          ) : (
-            <GlobeIcon size={11} />
-          )}
-          {repository.visibility === "private" ? "Privado" : "Público"}
-        </span>
-      </div>
-
-      {repository.language ? (
-        <span className="flex items-center gap-1.5 text-[13px] text-fg-2">
+      <div
+        role="checkbox"
+        aria-checked={selected}
+        aria-disabled={locked || undefined}
+        aria-label={`${repository.owner}/${repository.name}`}
+        tabIndex={0}
+        onClick={toggle}
+        onKeyDown={onKeyDown}
+        className={cn(
+          "relative flex h-full items-start gap-3.5 rounded-lg border border-border bg-surface p-[18px]",
+          "transition-colors duration-200",
+          !locked && "hover:border-trail-600",
+        )}
+      >
+        {selected && (
           <span
-            className="size-2.5 flex-none rounded-full"
-            style={{ background: languageColor(repository.language) }}
             aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-lg border-2 border-trail-500"
           />
-          {repository.language}
-        </span>
-      ) : (
-        <span className="text-[13px] text-fg-muted">Sem linguagem detectada</span>
-      )}
-    </button>
+        )}
+
+        {selected ? (
+          <span
+            aria-hidden="true"
+            className="mt-0.5 flex size-5 flex-none items-center justify-center rounded-sm bg-trail-500 text-on-trail"
+          >
+            <CheckIcon size={12} />
+          </span>
+        ) : (
+          <span
+            aria-hidden="true"
+            className="mt-0.5 size-5 flex-none rounded-sm border-2 border-fg-muted"
+          />
+        )}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Sem wrap: nome longo trunca em vez de empurrar a pílula para outra linha. */}
+          <div className="flex items-center gap-2">
+            <span
+              title={repository.name}
+              className="min-w-0 truncate font-mono text-[14.5px] font-semibold"
+            >
+              {repository.name}
+            </span>
+            <span className="flex-none rounded-full border border-border px-2 py-0.5 font-mono text-[10.5px] text-fg-muted">
+              {repository.visibility === "private" ? "Privado" : "Público"}
+            </span>
+          </div>
+
+          {/* Três linhas sempre reservadas, tenha o repositório descrição ou não. */}
+          <p
+            title={repository.description ?? undefined}
+            className="mt-1.5 mb-2.5 line-clamp-3 min-h-[calc(3*1.5*13.5px)] text-[13.5px] leading-[1.5] text-fg-2"
+          >
+            {repository.description ?? "Sem descrição no GitHub."}
+          </p>
+
+          <span className="mt-auto inline-flex max-w-full items-center gap-[7px] self-start truncate rounded-full border border-border bg-surface-2 px-[11px] py-1 font-mono text-[12px] font-medium">
+            <i
+              aria-hidden="true"
+              className="inline-block size-[9px] flex-none rounded-full"
+              style={{
+                background: repository.language
+                  ? languageColor(repository.language)
+                  : "var(--color-fg-muted)",
+              }}
+            />
+            {repository.language ?? "Sem linguagem"}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,8 @@
 import type { ButtonHTMLAttributes, MouseEvent } from "react";
 import { Link, type LinkProps } from "react-router-dom";
 
+import { cn } from "../../lib/cn";
+
 import {
   buttonStyles,
   type ButtonSize,
@@ -56,7 +58,7 @@ export function ButtonLink({
       className={buttonStyles(
         variant,
         size,
-        disabled ? "pointer-events-none opacity-50" : className
+        cn(className, disabled && "pointer-events-none opacity-50")
       )}
       {...props}
     />
