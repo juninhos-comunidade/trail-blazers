@@ -20,10 +20,17 @@ export function AppHeader({ label }: { label?: string }) {
         </Link>
 
         {label ? (
-          <span className="font-mono text-xs text-fg-muted">{label}</span>
+          <span className="truncate font-mono text-xs text-fg-muted">
+            {label}
+          </span>
         ) : (
-          <div className="flex items-center gap-2.5">
-            <ThemeToggle className="hidden sm:inline-flex" />
+          <div className="flex min-w-0 items-center gap-2">
+            {/* O wrapper controla a visibilidade: aplicar `hidden` direto no
+                botão não funciona, porque a classe `inline-flex` da base dele
+                vence `hidden` na ordem do CSS do Tailwind. */}
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
             <UserMenu />
           </div>
         )}

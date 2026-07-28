@@ -8,6 +8,9 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { UnderConstructionPage } from "./pages/UnderConstructionPage";
+import { InterviewPage } from "@pages/InterviewPage";
+import { JobDescriptionPage } from "@pages/JobDescriptionPage";
+import { ReportPage } from "@pages/ReportPage";
 import { RepositoryChooserPage } from "@pages/RepositoryChooserPage";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { paths } from "./routes/paths";
@@ -28,7 +31,12 @@ export default function App() {
             {/* Rotas privadas (RF-1.3). */}
             <Route element={<RequireAuth />}>
               <Route path={paths.dashboard} element={<DashboardPage />} />
+
+              {/* Fluxo da entrevista: só a etapa 2 conversa com o backend. */}
+              <Route path={paths.newInterview} element={<JobDescriptionPage />} />
               <Route path={paths.repoChooser} element={<RepositoryChooserPage />} />
+              <Route path={paths.interview} element={<InterviewPage />} />
+              <Route path={paths.report} element={<ReportPage />} />
             </Route>
 
             <Route path="*" element={<UnderConstructionPage />} />

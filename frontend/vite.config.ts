@@ -12,6 +12,7 @@ export default defineConfig({
       '@components': fileURLToPath(new URL('./src/components', import.meta.url)),
       '@content': fileURLToPath(new URL('./src/content', import.meta.url)),
       '@lib': fileURLToPath(new URL('./src/lib', import.meta.url)),
+      '@mocks': fileURLToPath(new URL('./src/mocks', import.meta.url)),
       '@pages': fileURLToPath(new URL('./src/pages', import.meta.url)),
       '@routes': fileURLToPath(new URL('./src/routes', import.meta.url)),
       '@theme': fileURLToPath(new URL('./src/theme', import.meta.url)),

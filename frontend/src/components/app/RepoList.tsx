@@ -17,6 +17,7 @@ interface RepositoryListProps {
   className?: string;
 }
 
+/** Recebe sempre uma lista não vazia: a página trata erro e lista vazia. */
 export function RepositoryList({
   repositories,
   selectedIds,
@@ -30,28 +31,13 @@ export function RepositoryList({
   // A lista pode encolher entre recarregamentos e deixar a página atual vazia.
   const currentPage = Math.min(page, pageCount);
 
-  if (repositories.length === 0) {
-    return (
-      <div
-        className={cn(
-          "flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface px-6 py-16 text-center",
-          className,
-        )}
-      >
-        <p className="text-[15px] text-fg-2">
-          Nenhum repositório encontrado na sua conta do GitHub.
-        </p>
-      </div>
-    );
-  }
-
   const full = selectedIds.length >= limit;
   const start = (currentPage - 1) * PAGE_SIZE;
   const visibleRepositories = repositories.slice(start, start + PAGE_SIZE);
 
   return (
     <div className={className}>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-3.5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,290px),1fr))] gap-3.5">
         {visibleRepositories.map((repository) => {
           const selected = selectedIds.includes(repository.id);
 

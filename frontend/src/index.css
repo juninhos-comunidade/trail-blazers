@@ -55,6 +55,9 @@
 
   --animate-rise: rise 0.35s ease both;
   --animate-ring-draw: ring-draw 1.2s ease-out both;
+  --animate-shimmer: shimmer 1.4s ease infinite;
+  --animate-grow: grow 1s ease both;
+  --animate-blink: blink 1.2s ease infinite;
 
   @keyframes rise {
     from {
@@ -67,9 +70,39 @@
     }
   }
 
+  /* --ring-length permite reusar a animação com raios diferentes. */
   @keyframes ring-draw {
     from {
-      stroke-dashoffset: 188.5;
+      stroke-dashoffset: var(--ring-length, 188.5);
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -100% 0;
+    }
+  }
+
+  /* --grow-to é a largura final da barra. */
+  @keyframes grow {
+    from {
+      width: 0;
+    }
+    to {
+      width: var(--grow-to, 100%);
+    }
+  }
+
+  @keyframes blink {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 1;
     }
   }
 }

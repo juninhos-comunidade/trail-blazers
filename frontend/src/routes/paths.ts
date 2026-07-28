@@ -6,9 +6,16 @@ export const paths = {
   /** Destino do redirect do backend após o OAuth (FRONTEND_URL + esta rota). */
   authCallback: "/auth/success",
   dashboard: "/dashboard",
-  /** Fluxo de criação de entrevista — ainda em construção. */
-  newInterview: "/em-desenvolvimento",
-  repoChooser: "/repoChooser"
+
+  /**
+   * Fluxo de criação de entrevista, em quatro etapas. Só a etapa de
+   * repositórios fala com o backend; as outras três são mocks navegáveis
+   * enquanto os épicos correspondentes não existem.
+   */
+  newInterview: "/entrevista/vaga",
+  repoChooser: "/entrevista/repositorios",
+  interview: "/entrevista/conversa",
+  report: "/entrevista/relatorio",
 } as const;
 
 export const sectionIds = {

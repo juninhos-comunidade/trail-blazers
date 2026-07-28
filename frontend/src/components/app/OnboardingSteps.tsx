@@ -9,7 +9,7 @@ export function OnboardingSteps({ className }: { className?: string }) {
   return (
     <ol
       className={cn(
-        "grid list-none grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-5 p-0 text-left",
+        "grid list-none grid-cols-[repeat(auto-fit,minmax(min(100%,210px),1fr))] gap-5 p-0 text-left",
         className,
       )}
     >

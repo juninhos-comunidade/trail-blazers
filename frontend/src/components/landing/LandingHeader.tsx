@@ -13,32 +13,30 @@ export function LandingHeader() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-[color-mix(in_srgb,var(--color-bg)_88%,transparent)] backdrop-blur-[10px]">
-      <Container className="flex items-center justify-between gap-4 py-3.5">
-        <Logo />
+      <Container className="flex items-center justify-between gap-3 py-3.5">
+        <Logo className="text-lg sm:text-xl" />
 
-        <nav className="flex items-center gap-2.5">
-          <a
-            href={`#${sectionIds.howItWorks}`}
-            className={buttonStyles(
-              "ghost",
-              "sm",
-              "hidden md:inline-flex font-medium",
-            )}
-          >
-            Como funciona
-          </a>
+        {/* Os wrappers `hidden md:block` existem porque `hidden` aplicado
+            direto nestes elementos perderia para o `inline-flex` que vem da
+            base do botão, na ordem do CSS do Tailwind. */}
+        <nav className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+          <div className="hidden md:block">
+            <a
+              href={`#${sectionIds.howItWorks}`}
+              className={buttonStyles("ghost", "sm", "font-medium")}
+            >
+              Como funciona
+            </a>
+          </div>
 
-          <ThemeToggle />
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
 
           {isAuthenticated ? (
             <UserMenu />
           ) : (
-            <ButtonLink
-              to={paths.login}
-              variant="secondary"
-              size="sm"
-              className="hidden md:inline-flex"
-            >
+            <ButtonLink to={paths.login} variant="secondary" size="sm">
               <GitHubIcon />
               Entrar
             </ButtonLink>
