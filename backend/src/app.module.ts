@@ -8,6 +8,8 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { RepositoriesModule } from '@repos/repos.module';
+import { AiModule } from 'src/ai/ai.module';
+import { JobVacancyModule } from 'src/job-vacancy/job-vacancy.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { RepositoriesModule } from '@repos/repos.module';
     UsersModule,
     AuthModule,
     RepositoriesModule,
+    AiModule,
+    JobVacancyModule,
   ],
   controllers: [AppController],
   providers: [AppService],
