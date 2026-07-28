@@ -27,7 +27,7 @@ export function HowItWorksSection() {
             <div className="h-full w-full rounded-sm bg-gradient-to-r from-trail-500 to-ember-400 opacity-50" />
           </div>
 
-          <ol className="grid list-none grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-8 p-0">
+          <ol className="grid list-none grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-8 p-0">
             {trailSteps.map((step) => (
               <li
                 key={step.number}

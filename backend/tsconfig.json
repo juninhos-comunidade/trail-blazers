@@ -20,6 +20,14 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@auth/*": ["./src/auth/*"],
+      "@config/*": ["./src/config/*"],
+      "@crypto/*": ["./src/crypto/*"],
+      "@prisma/*": ["./src/prisma/*"],
+      "@repos/*": ["./src/repos/*"],
+      "@users/*": ["./src/users/*"]
+    }
   }
 }

@@ -26,9 +26,9 @@ describe('GithubStrategy', () => {
     }) as Profile;
 
   // captura o resultado do callback `done` da strategy
-  const runValidate = async (profile: Profile) => {
+  const runValidate = (profile: Profile) => {
     let result: GithubUser | undefined;
-    await strategy.validate('gho_token', 'refresh', profile, (_err, user) => {
+    strategy.validate('gho_token', 'refresh', profile, (_err, user) => {
       result = user;
     });
     return result;
@@ -65,45 +65,45 @@ describe('GithubStrategy', () => {
     });
   });
 
-  it('usa apenas o primeiro email e a primeira foto', async () => {
+  it('usa apenas o primeiro email e a primeira foto', () => {
     const profile = buildProfile({
       emails: [{ value: 'principal@example.com' }, { value: 'secundario@example.com' }],
       photos: [{ value: 'https://primeira' }, { value: 'https://segunda' }],
     });
 
-    const user = await runValidate(profile);
+    const user = runValidate(profile);
 
     expect(user?.email).toBe('principal@example.com');
     expect(user?.avatarUrl).toBe('https://primeira');
   });
 
   // CT-01.2 — conta do GitHub com email privado e/ou sem avatar
-  it('devolve undefined quando não há email nem foto', async () => {
-    const user = await runValidate(buildProfile({ emails: undefined, photos: undefined }));
+  it('devolve undefined quando não há email nem foto', () => {
+    const user = runValidate(buildProfile({ emails: undefined, photos: undefined }));
 
     expect(user?.email).toBeUndefined();
     expect(user?.avatarUrl).toBeUndefined();
     expect(user?.githubId).toBe('123');
   });
 
-  it('devolve undefined quando as listas de email e foto vêm vazias', async () => {
-    const user = await runValidate(buildProfile({ emails: [], photos: [] }));
+  it('devolve undefined quando as listas de email e foto vêm vazias', () => {
+    const user = runValidate(buildProfile({ emails: [], photos: [] }));
 
     expect(user?.email).toBeUndefined();
     expect(user?.avatarUrl).toBeUndefined();
   });
 
   // CT-01.3
-  it('usa string vazia quando o profile não tem username', async () => {
-    const user = await runValidate(buildProfile({ username: undefined }));
+  it('usa string vazia quando o profile não tem username', () => {
+    const user = runValidate(buildProfile({ username: undefined }));
 
     expect(user?.username).toBe('');
   });
 
-  it('chama o callback sem erro', async () => {
+  it('chama o callback sem erro', () => {
     const done = jest.fn();
 
-    await strategy.validate('gho_token', 'refresh', buildProfile(), done);
+    strategy.validate('gho_token', 'refresh', buildProfile(), done);
 
     expect(done).toHaveBeenCalledWith(null, expect.objectContaining({ githubId: '123' }));
   });

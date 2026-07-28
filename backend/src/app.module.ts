@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { CryptoModule } from './crypto/crypto.module';
+import { RepositoriesModule } from '@repos/repos.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CryptoModule } from './crypto/crypto.module';
     CryptoModule,
     UsersModule,
     AuthModule,
+    RepositoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
