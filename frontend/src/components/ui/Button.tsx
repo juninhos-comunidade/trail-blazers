@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, MouseEvent } from "react";
 import { Link, type LinkProps } from "react-router-dom";
 
 import {
@@ -31,13 +31,34 @@ export function Button({
 interface ButtonLinkProps extends LinkProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  disabled?: boolean;
 }
 
 export function ButtonLink({
   variant = "primary",
   size = "md",
   className,
+  disabled, // isso aqui ta sujeito a alteração
+  onClick,
   ...props
 }: ButtonLinkProps) {
-  return <Link className={buttonStyles(variant, size, className)} {...props} />;
+  return (
+    <Link
+      aria-disabled={disabled}
+      tabIndex={disabled ? -1 : undefined}
+      onClick={(e: MouseEvent<HTMLAnchorElement>) => {
+        if (disabled) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }}
+      className={buttonStyles(
+        variant,
+        size,
+        disabled ? "pointer-events-none opacity-50" : className
+      )}
+      {...props}
+    />
+  );
 }

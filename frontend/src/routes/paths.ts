@@ -8,6 +8,7 @@ export const paths = {
   dashboard: "/dashboard",
   /** Fluxo de criação de entrevista — ainda em construção. */
   newInterview: "/em-desenvolvimento",
+  repoChooser: "/repoChooser"
 } as const;
 
 export const sectionIds = {

@@ -8,6 +8,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { UnderConstructionPage } from "./pages/UnderConstructionPage";
+import { RepositoryChooserPage } from "@pages/RepositoryChooserPage";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { paths } from "./routes/paths";
 
@@ -27,12 +28,9 @@ export default function App() {
             {/* Rotas privadas (RF-1.3). */}
             <Route element={<RequireAuth />}>
               <Route path={paths.dashboard} element={<DashboardPage />} />
+              <Route path={paths.repoChooser} element={<RepositoryChooserPage />} />
             </Route>
 
-            <Route
-              path={paths.inProgress}
-              element={<UnderConstructionPage />}
-            />
             <Route path="*" element={<UnderConstructionPage />} />
           </Routes>
         </AuthProvider>
