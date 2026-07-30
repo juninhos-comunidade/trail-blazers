@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '@users/users.service';
-import { RepositorySummary } from '@repos/types/repos-summary';
+import { UsersService } from '../users/users.service';
+import { RepositorySummary } from './types/repos-summary';
 
 interface GithubRepoResponse {
   id: number;
