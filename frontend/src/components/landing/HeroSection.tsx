@@ -1,9 +1,8 @@
-import { ButtonLink } from "../ui/Button";
+import { AuthCta } from "../auth/AuthCta";
 import { buttonStyles } from "../ui/button-styles";
 import { Container } from "../ui/Container";
 import { Eyebrow } from "../ui/Eyebrow";
-import { GitHubIcon } from "../ui/icons";
-import { paths, sectionIds } from "../../routes/paths";
+import { sectionIds } from "../../routes/paths";
 
 function CodeSample() {
   return (
@@ -63,7 +62,7 @@ function ScoreRing({ score }: { score: number }) {
 export function HeroSection() {
   return (
     <section className="bg-[radial-gradient(1000px_460px_at_18%_-10%,--alpha(var(--color-trail-500)/13%),transparent_70%)]">
-      <Container className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-center gap-14 pt-18 pb-22">
+      <Container className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] items-center gap-14 pt-18 pb-22">
         <div>
           <Eyebrow>Simulador de entrevistas técnicas</Eyebrow>
           <h1 className="mt-4.5 font-display text-[clamp(2.4rem,5.2vw,3.6rem)] leading-[1.1] font-bold tracking-[-0.02em] text-pretty">
@@ -77,11 +76,8 @@ export function HeroSection() {
             real.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink to={paths.login} size="lg">
-              <GitHubIcon size={18} />
-              Entrar com GitHub
-            </ButtonLink>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <AuthCta />
             <a
               href={`#${sectionIds.howItWorks}`}
               className={buttonStyles("secondary", "lg")}

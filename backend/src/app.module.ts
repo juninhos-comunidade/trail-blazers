@@ -3,6 +3,11 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { envValidationSchema } from './config/env.validation';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { CryptoModule } from './crypto/crypto.module';
+import { RepositoriesModule } from '@repos/repos.module';
 
 @Module({
   imports: [
@@ -14,6 +19,11 @@ import { envValidationSchema } from './config/env.validation';
         abortEarly: false,
       },
     }),
+    PrismaModule,
+    CryptoModule,
+    UsersModule,
+    AuthModule,
+    RepositoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
