@@ -1,7 +1,7 @@
 # === Dependências ===
 node_modules/
 **/node_modules/
- 
+
 # === Builds ===
 dist/
 build/
@@ -9,54 +9,55 @@ build/
 **/build/
 .next/
 out/
- 
+
 # === Variáveis de ambiente ===
 .env
 .env.local
 .env.*.local
 **/.env
 **/.env.local
- 
+
 # === Logs ===
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
- 
+
 # === Testes / cobertura ===
 coverage/
 **/coverage/
 .nyc_output/
- 
+
 # === Cache de ferramentas ===
 .eslintcache
 .turbo/
 .cache/
 .vite/
 .parcel-cache/
- 
+
 # === Sistema operacional ===
 .DS_Store
 Thumbs.db
 desktop.ini
- 
+
 # === Editores / IDEs ===
 .vscode/*
 !.vscode/extensions.json
 .idea/
 *.swp
 *.swo
- 
+
 # === NestJS específico ===
 backend/dist/
- 
+
 # === React / Vite / CRA específico ===
 frontend/dist/
 frontend/build/
- 
+
 # === Diversos ===
 *.tsbuildinfo
 .env.example.local
 .husky/_
- 
+.tool-versions
+InterviewTrail.html

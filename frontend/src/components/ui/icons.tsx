@@ -20,6 +20,60 @@ export function GitHubIcon({
   );
 }
 
+export function PlusIcon({
+  size = 15,
+  ...props
+}: IconProps & { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        d="M8 3v10M3 8h10"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function LockIcon({
+  size = 14,
+  ...props
+}: IconProps & { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      {...props}
+    >
+      <rect
+        x="3"
+        y="7"
+        width="10"
+        height="6.5"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M5.5 7 V5.2 a2.5 2.5 0 0 1 5 0 V7"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
 export function CheckIcon({
   size = 11,
   ...props
@@ -40,6 +94,30 @@ export function CheckIcon({
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+export function GlobeIcon({ size = 12, ...props }: IconProps & { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M2 8h12M8 1.8c1.8 1.7 2.8 3.9 2.8 6.2S9.8 12.5 8 14.2C6.2 12.5 5.2 10.3 5.2 8S6.2 3.5 8 1.8Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function CommitIcon({ size = 13, ...props }: IconProps & { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <line x1="1" y1="8" x2="5" y2="8" stroke="currentColor" strokeWidth="1.4" />
+      <line x1="11" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   );
 }

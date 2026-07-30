@@ -15,6 +15,16 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "paths": {
+      "@auth/*": ["./src/auth/*"],
+      "@components/*": ["./src/components/*"],
+      "@content/*": ["./src/content/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@mocks/*": ["./src/mocks/*"],
+      "@pages/*": ["./src/pages/*"],
+      "@routes/*": ["./src/routes/*"],
+      "@theme/*": ["./src/theme/*"]
+    },
 
     /* Linting */
     "noUnusedLocals": true,

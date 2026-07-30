@@ -65,7 +65,7 @@ function InterviewPreview() {
 export function DifferenceSection() {
   return (
     <section className="border-t border-border">
-      <Container className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-center gap-14 py-20">
+      <Container className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] items-center gap-14 py-20">
         <div>
           <Eyebrow tone="ember">O diferencial</Eyebrow>
           <h2 className="mt-3 mb-4 font-display text-[clamp(1.7rem,3.4vw,2.2rem)] font-semibold tracking-[-0.02em] text-pretty">
