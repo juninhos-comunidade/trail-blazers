@@ -54,6 +54,16 @@ interface GithubRepoResponse {
   private: boolean;
 }
 
+interface GithubTreeNode {
+  path: string;
+  type: 'blob' | 'tree' | 'commit';
+}
+
+interface GithubTreeResponse {
+  tree: GithubTreeNode[];
+  truncated?: boolean;
+}
+
 const GITHUB_REPOS_URL =
   'https://api.github.com/user/repos?per_page=100&sort=full_name&affiliation=owner';
 
@@ -155,12 +165,12 @@ export class RepositoriesService {
 
     if (!treeResponse.ok) throw this.mapGithubError(treeResponse);
 
-    const treeData = await treeResponse.json();
+    const treeData = (await treeResponse.json()) as GithubTreeResponse;
 
     let candidatePaths: string[] = treeData.tree
-      .filter((node: any) => node.type === 'blob')
-      .map((node: any) => node.path)
-      .filter((path: string) => this.isFileRelevant(path));
+      .filter((node) => node.type === 'blob')
+      .map((node) => node.path)
+      .filter((path) => this.isFileRelevant(path));
 
     if (String(candidatePaths).length === 0) {
       throw new HttpException(
