@@ -1,11 +1,40 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from '@users/users.service';
 import { RepositorySummary } from './types/repos-summary';
-import { Logger } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 
 const MAX_CONTEXT_CHARS = 80000; // ~20.000 tokens
-const IGNORED_DIRS = new Set(['node_modules', 'dist', 'build', '.git', 'coverage', '.next', 'out', 'vendor', 'public']);
-const IGNORED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.pdf', '.zip', '.exe', '.dll', '.lock']);
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'build',
+  '.git',
+  'coverage',
+  '.next',
+  'out',
+  'vendor',
+  'public',
+]);
+const IGNORED_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.ico',
+  '.pdf',
+  '.zip',
+  '.exe',
+  '.dll',
+  '.lock',
+]);
 const IGNORED_FILES = new Set(['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml']);
 
 export interface ProcessedRepository {
@@ -30,7 +59,10 @@ const GITHUB_REPOS_URL =
 
 @Injectable()
 export class RepositoriesService {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async listForUser(userId: string): Promise<RepositorySummary[]> {
     const token = await this.usersService.getGithubToken(userId);
@@ -100,6 +132,14 @@ export class RepositoriesService {
     owner: string,
     repo: string,
   ): Promise<ProcessedRepository> {
+    const cacheKey = `repo_analysis_${userId}_${owner}_${repo}`;
+
+    const cachedData = await this.cacheManager.get<ProcessedRepository>(cacheKey);
+    if (cachedData) {
+      console.log(`\n[CACHE] Servindo análise do repositório ${owner}/${repo}.`);
+      return cachedData;
+    }
+
     const token = await this.usersService.getGithubToken(userId);
     if (!token) throw new UnauthorizedException('Token do GitHub não encontrado.');
 
@@ -166,12 +206,14 @@ export class RepositoriesService {
     console.log(`Total de tokens estimado: ${Math.ceil(currentCharCount / 4)}`);
     console.log(`=====================================================\n`);
 
-    // Aqui falta o cache ainda
-    return {
+    const result: ProcessedRepository = {
       relevantFiles,
       omittedFiles,
       totalTokensEstimative: Math.ceil(currentCharCount / 4),
     };
+
+    await this.cacheManager.set(cacheKey, result);
+    return result;
   }
 
   private isFileRelevant(path: string): boolean {
