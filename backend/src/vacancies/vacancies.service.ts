@@ -116,7 +116,7 @@ export class VacanciesService {
     return {
       id: v.id,
       userId: v.userId,
-      description: v.rawDescription,
+      rawDescription: v.rawDescription,
       parsedProfile,
       parsingCompleted,
       createdAt: v.createdAt,

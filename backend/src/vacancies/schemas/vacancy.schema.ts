@@ -59,7 +59,12 @@ export type CreateVacancyDto = z.infer<typeof CreateVacancySchema>;
 export interface VacancyResponse {
   id: string;
   userId: string;
-  description: string;
+  /**
+   * Mantém o nome da coluna do Prisma de propósito: o front (`vacancies-api.ts`
+   * e `JobDescriptionPage.tsx`) já consome `rawDescription` desde o RF-2.1.
+   * Renomear aqui quebraria a tela de cadastro sem erro visível.
+   */
+  rawDescription: string;
   parsedProfile: ParsedVacancyProfile | null;
   parsingCompleted: boolean;
   createdAt: Date;

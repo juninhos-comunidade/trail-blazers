@@ -9,16 +9,28 @@ import { API_URL } from "./env";
 export const DESCRIPTION_MIN_LENGTH = 50;
 export const DESCRIPTION_MAX_LENGTH = 5000;
 
+/** Perfil extraído da vaga pela IA (RF-2.2). */
+export interface ParsedVacancyProfile {
+  technologies: string[];
+  seniorityLevel: "junior" | "mid" | "senior" | "lead" | "unknown";
+  keyCompetencies: string[];
+  confidence: "high" | "low";
+  /** `true` quando a vaga não é da área de tecnologia. */
+  outOfScope: boolean;
+}
+
 /** Vaga como o backend devolve no POST /vacancies (tabela `vacancies`). */
 export interface Vacancy {
   id: string;
   userId: string;
   rawDescription: string;
-  /** Campos do parse da vaga; nulos até o épico de análise existir. */
-  parsedStack: unknown;
-  parsedSeniority: string | null;
-  parsedSkills: unknown;
-  parseConfidence: number | null;
+  /**
+   * O parsing roda em segundo plano: o POST responde com `parsingCompleted`
+   * false e `parsedProfile` nulo. Faça polling em `GET /vacancies/:id` até
+   * `parsingCompleted` virar true.
+   */
+  parsedProfile: ParsedVacancyProfile | null;
+  parsingCompleted: boolean;
   createdAt: string;
 }
 
