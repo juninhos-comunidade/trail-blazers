@@ -2,9 +2,34 @@
 
 > **Escopo:** PR #61 (`feature/RF-3.3` — leitura e filtragem de repositório) e PR #62
 > (`feature/RF-2` — cadastro de vaga + parsing por IA).
-> **Estado atual:** PR #61 já está na `develop`. O conteúdo da PR #62 foi mergeado na
-> `develop` **local** (commit `495d859`), ainda **sem push** e **sem compilar**.
 > **Data:** 2026-08-03
+
+---
+
+## 0. Estado atual (leia primeiro)
+
+| Branch | Estado |
+|---|---|
+| `origin/develop` | intocada, como estava — PR #61 mergeada, sem a PR #62 |
+| `fix/rf-2-integracao` (local) | merge da PR #62 + **todas as correções aplicadas**, sem push |
+
+**As correções já foram feitas** (commit `596f22a`). O que este documento descreve nas
+seções §4.1 a §4.3 é o **diagnóstico**, mantido como registro do que estava errado e por quê.
+O status de cada item está marcado ✅ (corrigido) ou ⬜ (em aberto).
+
+Decisão de arquitetura tomada: a rota pública continua **`/vacancies`**, mas o código é o da
+PR #62. O módulo `job-vacancy` foi removido.
+
+Verificação já executada na branch:
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | ✅ limpo |
+| `npm run lint` | ✅ limpo |
+| `npm test` | ✅ 100 de 101 (1 falha pré-existente, ver §4.5) |
+| `npm run build && node dist/src/main.js` | ✅ sobe e mapeia as 3 rotas |
+| `npx prisma migrate dev` | ✅ migration `20260803122348_add_parsed_out_of_scope` aplicada |
+| `npm run test:cov` | ⬜ 62% — abaixo do threshold de 80% (ver §4.5) |
 
 ---
 
@@ -144,7 +169,7 @@ src/job-vacancy/schemas/zod-validation.pipe.ts(7,37):   TS2307: Cannot find modu
 
 ---
 
-#### **B1 — `zod` não está declarado no `package.json`**
+#### ✅ **B1 — `zod` não está declarado no `package.json`**
 
 **O que falha:** `npm ci` seguido de `npm run build` quebra em qualquer máquina que não
 seja a do autor.
@@ -167,7 +192,7 @@ mensagem de erro. Ou fixem em `^3.25`, ou adaptem os dois pontos acima.
 
 ---
 
-#### **B2 — `prisma.job` não existe; o model se chama `Vacancy`**
+#### ✅ **B2 — `prisma.job` não existe; o model se chama `Vacancy`**
 
 **O que falha:** os 4 erros `TS2339` acima. Em runtime seria `TypeError: Cannot read
 properties of undefined`.
@@ -192,7 +217,7 @@ a tabela `vacancies`.
 
 ---
 
-#### **B3 — `job-vacancy.service.spec.ts` foi escrito contra uma versão antiga do service**
+#### ✅ **B3 — `job-vacancy.service.spec.ts` foi escrito contra uma versão antiga do service**
 
 **O que falha:** a suíte inteira. Três incompatibilidades no mesmo arquivo:
 
@@ -231,15 +256,20 @@ const ai_module_1 = require("src/ai/ai.module");   // ← MODULE_NOT_FOUND em ru
 
 Com `npm run start:prod` (`node dist/main`, sem `tsconfig-paths/register`) o app não sobe.
 
-**Situação:** resolvido na resolução de conflito do merge — trocado por
-`'./ai/ai.module'` e `'./job-vacancy/job-vacancy.module'`.
+**Situação:** resolvido na resolução de conflito do merge — trocado por caminho relativo.
 
-⚠️ **Mas a mesma armadilha existe em outro lugar.** Os aliases `@repos/*`, `@users/*` etc.
-do `tsconfig.json` têm exatamente o mesmo problema. A `develop` hoje escapa porque o
-`app.module.ts` usa caminho relativo para `./repos/repos.module`, **mas dentro de
-`src/repos/` os imports usam `@users/users.service`**. Isso significa que
-`npm run build && npm run start:prod` provavelmente **nunca foi executado neste projeto**.
-Ver item V4 do checklist.
+**⚠️ Correção de uma afirmação anterior deste documento.** A primeira versão dizia que os
+aliases `@repos/*`, `@users/*` etc. quebrariam em produção pelo mesmo motivo. **Isso está
+errado.** O teste empírico derruba a hipótese: `npm run build` seguido de
+`node dist/src/main.js` **sobe normalmente** e mapeia todas as rotas. O `nest build` faz
+mais do que um `tsc` cru — ele resolve os aliases na emissão, e nenhum `require("@...")`
+sobra no `dist/`. O que eu havia observado antes era a saída de um `tsc` invocado
+diretamente, que de fato não resolve, mas não é o comando que vocês usam.
+
+Os aliases estão seguros. O `start:prod` funciona. Fica só um registro: o alias
+`@prisma/*` do `tsconfig.json` aponta para `./src/prisma/*` e colide com o pacote real
+`@prisma/client`. Hoje funciona porque o TypeScript, ao não achar o arquivo local, cai no
+`node_modules` — mas é uma colisão de nomes infeliz e vale renomear para `@db/*` algum dia.
 
 ---
 
@@ -277,7 +307,7 @@ escolha.
 
 ### 4.3 Falhas de comportamento (compilam, mas quebram a experiência)
 
-#### **C1 — `outOfScope` nunca chega ao usuário** *(viola critério de aceitação do RF-2.2)*
+#### ✅ **C1 — `outOfScope` nunca chega ao usuário** *(violava critério de aceitação do RF-2.2)*
 
 O parser calcula `outOfScope` corretamente, mas o model `Vacancy` **não tem coluna para
 ele**, e o `toResponse` faz:
@@ -291,7 +321,7 @@ Efeito prático: candidato cola uma vaga de Gerente de Marketing → a API respo
 distinguir "vaga fora do escopo" de "vaga tech mal escrita". **Precisa de uma coluna nova**
 (`parsedOutOfScope Boolean?`) e, portanto, de uma migration.
 
-#### **C2 — não existe estado de falha**
+#### ✅ **C2 — não existe estado de falha**
 
 `parsingCompleted = parseConfidence !== null` faz "processando" e "falhou" serem o mesmo
 estado. Se o `prisma.update` dentro de `runParsing` lançar, o registro fica travado em
@@ -299,12 +329,12 @@ estado. Se o `prisma.update` dentro de `runParsing` lançar, o registro fica tra
 escreve no log. **Correção mínima:** no catch, gravar o `GENERIC_PROFILE` no banco para o
 polling terminar.
 
-#### **C3 — nenhum timeout na chamada à OpenRouter**
+#### ✅ **C3 — nenhum timeout na chamada à OpenRouter**
 
 `fetch` sem `AbortSignal` pode pendurar por minutos. Combinado com C2, resulta em polling
 infinito. Adicionar `signal: AbortSignal.timeout(20_000)`.
 
-#### **C4 — a saída da IA não é limpa de cercas markdown** *(o bug mais provável na demo)*
+#### ✅ **C4 — a saída da IA não é limpa de cercas markdown** *(era o bug mais provável na demo)*
 
 O request manda `response_format: { type: 'json_object' }`, mas o modelo padrão
 (`meta-llama/llama-3.1-8b-instruct:free`) **frequentemente ignora structured output** e
@@ -316,7 +346,7 @@ nenhum erro. Correção de uma linha antes do parse:
 const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 ```
 
-#### **C5 — `quickScopeCheck` é um no-op em português**
+#### ✅ **C5 — `quickScopeCheck` é um no-op em português**
 
 A lista `TECH_SCOPE_KEYWORDS` contém `'ia'` e `'ai'`, e o teste é `includes()` sem
 fronteira de palavra:
@@ -329,89 +359,115 @@ Praticamente qualquer texto em português passa pela heurística. A própria vag
 usada no spec (`NON_TECH_VACANCY`) contém "experiência" e "graduação" — ela **passa**. O
 teste só verde porque o mock da IA devolve `outOfScope: true`. Use regex com `\b`.
 
-#### **C6 — modelo `:free` é armadilha de apresentação**
+#### ⬜ **C6 — modelo `:free` é armadilha de apresentação**
 
 O tier gratuito da OpenRouter tem limite agressivo (na ordem de dezenas de requisições por
 dia). Se vocês ensaiarem de manhã e a banca testar à tarde, vem `429` → `GENERIC_PROFILE`
 → demo sem graça, e sem mensagem de erro visível (ver C4/C2). **Coloquem US$ 5 de crédito
 e usem um modelo barato pago.** É o melhor investimento de risco do projeto.
 
-#### **C7 — `.env.example` não foi atualizado**
+#### ✅ **C7 — `.env.example` não foi atualizado**
 
 `OPENROUTER_API_KEY` é `required()` no Joi e `getOrThrow` no provider. Quem der `git pull`
 amanhã recebe um erro de boot sem entender por quê.
 
 ---
 
-### 4.4 Itens menores (backlog, não bloqueiam)
+### 4.4 Itens menores
 
-- `description.slice(0, VACANCY_MAX_LENGTH)` no service é redundante — o Zod já rejeita acima do limite.
-- `updatedAt: j.createdAt` — o model não tem `updatedAt`; o contrato está mentindo para o cliente.
-- `parseConfidence` é `Float` (feito para score real) usado como enum de dois valores (`1.0`/`0.5`).
-- `types: ["jest"]` adicionado ao `tsconfig.json` é mudança não relacionada ao RF-2 e faz o
-  código de produção enxergar globais de teste. Verifiquei que não quebra o build (os tipos
-  do Node continuam chegando por referência transitiva), mas eu removeria.
-- Espaço em branco sobrando no `env.validation.ts` depois de `APP_TITLE`.
-- `@UseGuards(JwtAuthGuard)` no `JobVacancyController` é redundante — já existe
-  `APP_GUARD` global registrado em `auth.module.ts`.
-- A descrição da vaga é enviada a um terceiro (OpenRouter). No tier gratuito os prompts
+Corrigidos junto com o resto:
+
+- ✅ `description.slice(0, VACANCY_MAX_LENGTH)` removido — o Zod já rejeita acima do limite.
+- ✅ `updatedAt: j.createdAt` removido do contrato — o model não tem `updatedAt` e a resposta
+  estava mentindo para o cliente.
+- ✅ `@UseGuards(JwtAuthGuard)` redundante removido do controller — já existe `APP_GUARD`
+  global em `auth.module.ts`.
+- ✅ `ZodValidationPipe` agora é genérico e tipado (`ZodValidationPipe<T extends ZodType>`),
+  sem `any` e sem parâmetro não usado.
+
+Em aberto, sem impacto funcional:
+
+- ⬜ `parseConfidence` é `Float` (feito para score real) usado como enum de dois valores
+  (`1.0`/`0.5`). Funciona, mas desperdiça a coluna.
+- ⬜ `types: ["jest"]` no `tsconfig.json` é mudança não relacionada ao RF-2 e faz o código de
+  produção enxergar globais de teste. Não quebra nada; eu removeria por higiene.
+- ⬜ Espaço em branco sobrando no `env.validation.ts` depois de `APP_TITLE`.
+- ⬜ A descrição da vaga é enviada a um terceiro (OpenRouter). No tier gratuito os prompts
   podem ser logados/usados para treino. Vale uma linha no README.
-- O `PARSE_SYSTEM_PROMPT` recebe o texto do usuário sem delimitador. Injeção de prompt aqui
+- ⬜ O `PARSE_SYSTEM_PROMPT` recebe o texto do usuário sem delimitador. Injeção de prompt aqui
   tem impacto baixo (o Zod contém o estrago), mas envolver em `<vaga>…</vaga>` custa nada.
+
+---
+
+### 4.5 O que continua vermelho (e não foi causado por estas PRs)
+
+**⬜ `github.strategy.spec.ts` falha.** Um teste, com erro de uso do Jest:
+
+```
+Matcher error: received value must be a promise or a function returning a promise
+  > 59 |  await expect(runValidate(buildProfile())).resolves.toEqual({
+```
+
+`runValidate` devolve um objeto, não uma Promise, então `.resolves` não se aplica.
+**Confirmei que já falha na `develop`**, antes de qualquer coisa deste trabalho — não
+mexi nele para não misturar escopos. Correção: trocar `.resolves.toEqual` por `.toEqual`.
+
+**⬜ Cobertura em 62%, abaixo do threshold de 80%.** O `npm run test:cov` sai vermelho.
+A dívida não é do RF-2 — o código novo está coberto:
+
+| Arquivo | Cobertura |
+|---|---|
+| `vacancies.service.ts` | 100% stmts / 87.5% branches |
+| `vacancy-parser.service.ts` | coberto pelo spec dedicado |
+| **`repos.service.ts` (PR #61)** | **0% — 269 linhas sem um único teste** |
+| `repos.controller.ts` | 0% |
+| `vacancies.controller.ts` | 0% |
+| `openrouter.provider.ts` | 0% |
+
+O buraco é o `repos.service.ts`, que veio sem testes na PR #61. Duas saídas honestas:
+escrever os testes, ou baixar o threshold conscientemente e registrar a dívida. O que não
+vale é deixar o comando vermelho sem decisão — um threshold que ninguém respeita deixa de
+ser um sinal.
 
 ---
 
 ## 5. Checklist de verificação para garantir a integração
 
-Execute **na ordem**. Cada passo tem um critério objetivo de sucesso.
+As fases 1 a 4 **já foram executadas** na branch `fix/rf-2-integracao` — ficam registradas
+com o resultado obtido. As fases 5 a 7 dependem de você.
 
-### Fase 1 — decisão de arquitetura
+### Fase 1 — decisão de arquitetura ✅
 
-- [ ] **V0.** Decidir: `/vacancies` ou `/job-vacancies` como rota canônica (§4.2).
-      **Boa notícia:** verifiquei e **nenhum frontend consome nenhuma das duas rotas ainda**
-      (`git grep -in "vacanc" -- frontend/src` não retorna nada, e a branch
-      `feat/rf-2.1-cadastro-vaga` já está mergeada e só contém backend). Ou seja, vocês
-      podem escolher livremente sem quebrar tela nenhuma. Essa janela fecha assim que
-      alguém começar a tela de cadastro — **decidam hoje**.
+- [x] **V0.** Rota canônica: **`/vacancies`**, com o código da PR #62. Módulo `job-vacancy`
+      removido. Decisão tomada sabendo que nenhum frontend consumia nenhuma das duas rotas
+      ainda — a escolha foi livre de custo de refatoração.
 
-### Fase 2 — fazer compilar
+### Fase 2 — fazer compilar ✅
 
-- [ ] **V1.** `cd backend && npm i zod@^3.25 --save`
-      → `git diff package.json` mostra o zod adicionado.
-- [ ] **V2.** Trocar as 4 ocorrências de `prisma.job` por `prisma.vacancy` (§B2).
-- [ ] **V3.** `npx prisma generate && npx tsc --noEmit`
-      → **saída vazia**. Esse é o critério de aceite da fase.
-- [ ] **V4.** `npm run build && npm run start:prod`
-      → o app **sobe**. Se der `MODULE_NOT_FOUND` num `@repos/...` ou `@users/...`, os
-      aliases do `tsconfig.json` não estão sendo resolvidos em runtime (§B4). Duas saídas:
-      trocar os aliases por caminhos relativos (mais simples, recomendado para o hackathon)
-      ou mudar `start:prod` para `node -r tsconfig-paths/register dist/main`.
-      **Este passo provavelmente nunca foi executado — não pule.**
+- [x] **V1.** `npm i zod@^3.25 --save` → instalado `zod@3.25.76`.
+- [x] **V2.** As 4 ocorrências de `prisma.job` trocadas por `prisma.vacancy`.
+- [x] **V3.** `npx prisma generate && npx tsc --noEmit` → **saída vazia**.
+- [x] **V4.** `npm run build && node dist/src/main.js` → **sobe**, mapeando
+      `POST /vacancies`, `GET /vacancies/:id` e `GET /vacancies`. Nenhum `MODULE_NOT_FOUND`:
+      o `nest build` resolve os aliases do `tsconfig.json` na emissão (ver a correção em §B4).
 
-### Fase 3 — fazer os testes passarem
+### Fase 3 — testes e lint ✅ (com uma ressalva)
 
-- [ ] **V5.** Corrigir `job-vacancy.service.spec.ts` (§B3): import, `prisma.vacancy`,
-      fixtures no shape do banco.
-- [ ] **V6.** `npm test`
-      → todas as suítes verdes.
-- [ ] **V7.** `npm run test:cov`
-      → atenção: o `jest.coverageThreshold` está em **80% global**. O código novo do RF-3.3
-      (`repos.service.ts`) não tem teste nenhum. Ou escrevem os testes, ou baixam o
-      threshold conscientemente — não deixem o comando vermelho sem decisão.
-- [ ] **V8.** `npm run lint`
-      → sem erros.
+- [x] **V5.** `vacancies.service.spec.ts` reescrito: fixtures no shape do banco, mocks em
+      `prisma.vacancy`, mais casos para `outOfScope` e para as falhas de parsing.
+- [x] **V6.** `npm test` → **100 de 101**. A única falha é `github.strategy.spec.ts`, que já
+      estava vermelha na `develop` (§4.5).
+- [ ] **V7.** `npm run test:cov` → **62%, abaixo do threshold de 80%**. Em aberto: a dívida é
+      do `repos.service.ts` (PR #61), sem testes. Ver §4.5 — precisa de decisão.
+- [x] **V8.** `npm run lint` → limpo.
 
-### Fase 4 — banco de dados
+### Fase 4 — banco de dados ✅
 
-- [ ] **V9.** `npm run db:up && npx prisma migrate dev`
-      → confirmar que a tabela é `vacancies` (e **não** `jobs`):
-      ```sql
-      \dt
-      ```
-- [ ] **V10.** Se optarem por corrigir C1 (`outOfScope`), criar a migration:
-      ```bash
-      npx prisma migrate dev --name add_parsed_out_of_scope
-      ```
+- [x] **V9.** Tabela confirmada como `vacancies`.
+- [x] **V10.** Migration `20260803122348_add_parsed_out_of_scope` criada e aplicada, para o
+      `outOfScope` do RF-2.2 parar de se perder (§C1).
+      ⚠️ Quem for rodar a branch precisa executar `npx prisma migrate dev` para aplicá-la
+      no banco local.
 
 ### Fase 5 — ambiente
 
@@ -433,8 +489,8 @@ Com o app rodando e um JWT válido em mãos:
 - [ ] **V15.** `GET /:id` em loop → em poucos segundos vira `parsingCompleted: true` com
       `technologies` preenchido. **Se ficar preso em `false`, é C2/C3** — olhe o log do
       backend para ver se a chamada à IA falhou.
-- [ ] **V16.** Vaga de marketing → hoje devolve perfil vazio com `outOfScope: false`
-      (comportamento errado, §C1). Confirma o bug e serve de teste de regressão depois.
+- [ ] **V16.** Vaga de marketing → agora deve devolver `outOfScope: true` (§C1 corrigido).
+      Se vier `false`, a migration não foi aplicada no seu banco.
 - [ ] **V17.** Descrição com 10 caracteres → `400` com mensagem do Zod.
 - [ ] **V18.** Sem `Authorization` → `401`.
 - [ ] **V19.** Derrube a internet (ou ponha uma `OPENROUTER_API_KEY` inválida) e cadastre
@@ -446,11 +502,13 @@ Com o app rodando e um JWT válido em mãos:
 
 ### Fase 7 — antes de subir
 
-- [ ] **V22.** Não commitar o `.env` (ele está aberto no editor — confira o `.gitignore`).
-- [ ] **V23.** Revisar o ruído no `backend/package-lock.json` (havia alterações locais não
-      commitadas de `peer`/`optional`). Rode um `npm install` limpo e commite o lock
-      resultante junto com o zod.
-- [ ] **V24.** Só então: `git push origin develop`.
+- [ ] **V22.** Não commitar o `.env` (confira o `.gitignore`). O `.env.example` **já foi
+      atualizado** com as três variáveis novas.
+- [ ] **V23.** Decidir o que fazer com a cobertura (§4.5) e com o
+      `github.strategy.spec.ts` vermelho.
+- [ ] **V24.** `git push origin fix/rf-2-integracao` e abrir PR para a `develop`.
+- [ ] **V25.** Criar o workflow de CI (§7, item 2) — é o que impede a próxima PR de repetir
+      isto tudo.
 
 ---
 
