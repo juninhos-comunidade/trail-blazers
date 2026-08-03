@@ -292,13 +292,13 @@ As duas rotas gravam **na mesma tabela** `vacancies`. Um usuário pode cadastrar
 caracteres diferente. **Isso precisa ser unificado antes de qualquer integração com o
 frontend.**
 
-**Recomendação:** manter `/vacancies` como rota canônica — é o nome do domínio e combina
-com o model e a tabela — e **portar para dentro dela** o parsing, o `GET /:id` e os
-schemas Zod da PR #62. Depois de mover o conteúdo, deletar `src/job-vacancy/`.
+**Decisão tomada:** `/vacancies` é a rota canônica — é o nome do domínio, do model e da
+tabela — e o parsing, o `GET /:id` e os schemas Zod da PR #62 foram portados para dentro
+dela. `src/job-vacancy/` foi removido.
 
-Verifiquei que **nenhum frontend consome nenhuma das duas rotas ainda**, então a escolha é
-livre e sem custo de refatoração de tela. Essa liberdade acaba assim que alguém começar a
-implementar o cadastro no front.
+⚠️ Note que **`POST /vacancies` já é consumido pelo frontend** (`JobDescriptionPage.tsx` →
+`createVacancy()`). O contrato da resposta é, portanto, uma superfície pública: campos
+existentes não podem ser renomeados sem alterar a tela junto. Ver a ressalva no item V0.
 
 **Decidam isso primeiro**, porque todas as correções de B2/B3 mudam de lugar dependendo da
 escolha.
@@ -439,8 +439,19 @@ com o resultado obtido. As fases 5 a 7 dependem de você.
 ### Fase 1 — decisão de arquitetura ✅
 
 - [x] **V0.** Rota canônica: **`/vacancies`**, com o código da PR #62. Módulo `job-vacancy`
-      removido. Decisão tomada sabendo que nenhum frontend consumia nenhuma das duas rotas
-      ainda — a escolha foi livre de custo de refatoração.
+      removido.
+
+      ⚠️ **Correção importante.** Versões anteriores deste documento afirmavam que nenhum
+      frontend consumia as rotas de vaga. **Isso está errado** — foi um falso negativo de
+      busca. `frontend/src/pages/JobDescriptionPage.tsx` chama `createVacancy()` de
+      `lib/vacancies-api.ts`, que faz `POST /vacancies`, desde o commit `bc1adad`. Ou seja,
+      a escolha de manter `/vacancies` **não era livre: era obrigatória**, exatamente como
+      o time havia definido.
+
+      Consequência prática: o contrato da resposta precisa preservar `rawDescription`, que
+      é o campo lido pela tela (`created.rawDescription`). Renomear para `description`
+      quebraria o cadastro **em silêncio** — sem erro de tipo e sem erro em runtime, apenas
+      um `undefined` gravado no rascunho da entrevista.
 
 ### Fase 2 — fazer compilar ✅
 
