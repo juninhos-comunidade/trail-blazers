@@ -33,8 +33,6 @@ const seniorityLabels: Record<string, string> = {
 export function InterviewPage() {
   const navigate = useNavigate();
 
-  // Sem a vaga da etapa 1 não há contra o que entrevistar (acesso direto pela
-  // URL, ou aba nova). Mesma guarda da etapa 2.
   const [vacancy] = useState(readVacancyDraft);
   const [repository] = useState(readRepositoryDraft);
 
@@ -63,7 +61,6 @@ export function InterviewPage() {
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  // Mantém a conversa rolada até a última mensagem.
   useEffect(() => {
     const element = chatRef.current;
     if (element) element.scrollTop = element.scrollHeight;
@@ -193,8 +190,6 @@ export function InterviewPage() {
                   onClick={send}
                   disabled={!draft.trim() || typing}
                   aria-label="Enviar resposta"
-                  // O `!` vence o padding que vem do tamanho do botão; sem
-                  // ele o ícone é espremido a poucos pixels de largura.
                   className="size-12 flex-none rounded-[12px]! p-0!"
                 >
                   <svg

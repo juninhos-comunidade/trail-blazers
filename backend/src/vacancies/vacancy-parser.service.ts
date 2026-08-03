@@ -5,6 +5,44 @@ export abstract class AiProviderPort {
   abstract complete(systemPrompt: string, userMessage: string): Promise<string>;
 }
 
+/** O que deu errado na conversa com o provedor de IA. */
+export type AiErrorKind = 'invalid_api_key' | 'timeout' | 'unavailable';
+
+export class AiError extends Error {
+  constructor(
+    readonly kind: AiErrorKind,
+    message: string,
+    readonly detail?: unknown,
+  ) {
+    super(message);
+    this.name = 'AiError';
+  }
+}
+
+/**
+ * Motivo pelo qual a análise não pôde ser feita. Não confundir com um resultado
+ * pobre: uma vaga vaga demais gera um perfil vazio, mas a análise deu certo.
+ */
+export type ParseFailureReason =
+  'invalid_api_key' | 'timeout' | 'ai_unavailable' | 'invalid_response';
+
+const AI_ERROR_TO_REASON: Record<AiErrorKind, ParseFailureReason> = {
+  invalid_api_key: 'invalid_api_key',
+  timeout: 'timeout',
+  unavailable: 'ai_unavailable',
+};
+
+export class VacancyParseError extends Error {
+  constructor(
+    readonly reason: ParseFailureReason,
+    message: string,
+    readonly detail?: unknown,
+  ) {
+    super(message);
+    this.name = 'VacancyParseError';
+  }
+}
+
 const TECH_SCOPE_KEYWORDS = [
   'desenvolvedor',
   'desenvolvedora',
@@ -46,7 +84,6 @@ const TECH_SCOPE_KEYWORDS = [
   'programadora',
 ];
 
-// pré-compilado uma vez: a regex é criada no boot, não a cada requisição
 const SCOPE_PATTERNS: Record<string, RegExp> = Object.fromEntries(
   TECH_SCOPE_KEYWORDS.map((kw) => [
     kw,
@@ -76,16 +113,11 @@ Regras:
 - Se a vaga não for de tecnologia, retorne "outOfScope": true.
 `.trim();
 
-const GENERIC_PROFILE: ParsedVacancyProfile = {
+const OUT_OF_SCOPE_PROFILE: ParsedVacancyProfile = {
   technologies: [],
   seniorityLevel: 'unknown',
   keyCompetencies: [],
   confidence: 'low',
-  outOfScope: false,
-};
-
-const OUT_OF_SCOPE_PROFILE: ParsedVacancyProfile = {
-  ...GENERIC_PROFILE,
   outOfScope: true,
 };
 
@@ -105,20 +137,17 @@ export class VacancyParserService {
     try {
       raw = await this.ai.complete(PARSE_SYSTEM_PROMPT, description);
     } catch (err) {
-      this.logger.error('Falha na chamada à IA — usando perfil genérico.', err);
-      return GENERIC_PROFILE;
+      this.logger.error('Falha na chamada à IA.', err);
+
+      const reason = err instanceof AiError ? AI_ERROR_TO_REASON[err.kind] : 'ai_unavailable';
+      const message = err instanceof AiError ? err.message : 'A chamada à IA não foi concluída.';
+
+      throw new VacancyParseError(reason, message, err);
     }
 
     return this.parseWithZod(raw);
   }
 
-  // ─── helpers ───────────────────────────────────────────────────────────────
-
-  /**
-   * Modelos menores costumam ignorar `response_format: json_object` e devolver o
-   * JSON embrulhado em cerca markdown. Sem esta limpeza o JSON.parse falha e o
-   * parsing inteiro cai no perfil genérico silenciosamente.
-   */
   private stripMarkdownFence(raw: string): string {
     return raw
       .trim()
@@ -133,28 +162,26 @@ export class VacancyParserService {
       json = JSON.parse(this.stripMarkdownFence(raw));
     } catch {
       this.logger.error('Resposta da IA não é JSON válido.', raw.slice(0, 200));
-      return GENERIC_PROFILE;
+      throw new VacancyParseError('invalid_response', 'A IA não devolveu um JSON válido.');
     }
 
     const result = AiResponseSchema.safeParse(json);
     if (!result.success) {
       this.logger.error('Resposta da IA não passou na validação Zod.', result.error.flatten());
-      return GENERIC_PROFILE;
+      throw new VacancyParseError(
+        'invalid_response',
+        'A resposta da IA não bate com o formato esperado.',
+        result.error.flatten(),
+      );
     }
 
     const data = result.data;
 
-    // Edge case: IA indicou fora do escopo
     if (data.outOfScope) return OUT_OF_SCOPE_PROFILE;
 
     return data;
   }
 
-  /**
-   * Filtro barato antes de gastar uma chamada de IA. Usa fronteira de palavra:
-   * com `includes()` puro, "ia" casava com "experiência" e "ai" com "mais", o
-   * que fazia qualquer texto em português passar.
-   */
   private quickScopeCheck(text: string): boolean {
     const lower = text.toLowerCase();
     return TECH_SCOPE_KEYWORDS.some((kw) => SCOPE_PATTERNS[kw].test(lower));

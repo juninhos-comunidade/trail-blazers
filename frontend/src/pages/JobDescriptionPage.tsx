@@ -16,15 +16,17 @@ import {
 } from "@lib/interview-draft";
 import {
   createVacancy,
+  describeAnalysis,
+  reparseVacancy,
   waitForVacancyParsing,
   DESCRIPTION_MAX_LENGTH,
   DESCRIPTION_MIN_LENGTH,
   VacancyError,
+  type AnalysisOutcome,
   type ParsedVacancyProfile,
 } from "@lib/vacancies-api";
 import { paths } from "@routes/paths";
 
-/** `analyzing` = a vaga já está salva e a IA ainda está lendo a descrição. */
 type Status = "idle" | "saving" | "analyzing" | "saved";
 
 const seniorityLabels: Record<ParsedVacancyProfile["seniorityLevel"], string> = {
@@ -35,7 +37,25 @@ const seniorityLabels: Record<ParsedVacancyProfile["seniorityLevel"], string> = 
   unknown: "Não identificada",
 };
 
-/** Mesma checagem do backend (RF-2.1), para avisar antes de enviar. */
+/** Erro de rede/HTTP no meio do acompanhamento — a vaga já existe, só a análise falhou. */
+function toAnalysisProblem(cause: unknown): AnalysisOutcome {
+  if (cause instanceof VacancyError) {
+    return {
+      state: "problem",
+      detail: cause.detail,
+      hint: cause.hint ?? "A vaga foi salva. Você pode seguir mesmo assim.",
+      retryable: cause.retryable,
+    };
+  }
+
+  return {
+    state: "problem",
+    detail: "Perdemos o contato com o servidor durante a análise.",
+    hint: "A vaga foi salva. Você pode seguir mesmo assim.",
+    retryable: true,
+  };
+}
+
 function describeLengthProblem(text: string): string | null {
   const length = text.trim().length;
 
@@ -56,16 +76,13 @@ function describeLengthProblem(text: string): string | null {
 
 export function JobDescriptionPage() {
   const navigate = useNavigate();
-  // Voltar da etapa 2 (ou recarregar a página) reencontra a vaga já salva, em
-  // vez de pedir o texto de novo e gravar uma segunda vaga igual.
   const [draft] = useState(readVacancyDraft);
   const [text, setText] = useState(draft?.description ?? "");
   const [saved, setSaved] = useState<VacancyDraft | null>(draft);
   const [status, setStatus] = useState<Status>(draft ? "saved" : "idle");
   const [error, setError] = useState<VacancyError | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisOutcome | null>(null);
 
-  // Sair da tela (ou reescrever a vaga) no meio do polling precisa interrompê-lo,
-  // senão ele segue consultando o backend e escrevendo em estado desmontado.
   const polling = useRef<AbortController | null>(null);
   useEffect(() => () => polling.current?.abort(), []);
 
@@ -74,7 +91,6 @@ export function JobDescriptionPage() {
 
   const onChange = (next: string) => {
     setText(next);
-    // Editar a vaga invalida o que já foi salvo: a etapa precisa salvar de novo.
     if (status !== "idle") {
       polling.current?.abort();
       setStatus("idle");
@@ -82,6 +98,7 @@ export function JobDescriptionPage() {
       clearVacancyDraft();
     }
     setError(null);
+    setAnalysis(null);
   };
 
   const save = async () => {
@@ -90,6 +107,7 @@ export function JobDescriptionPage() {
 
     setStatus("saving");
     setError(null);
+    setAnalysis(null);
 
     let next: VacancyDraft;
 
@@ -106,29 +124,54 @@ export function JobDescriptionPage() {
       return;
     }
 
-    // A vaga já está gravada daqui em diante: o id segue para as próximas
-    // etapas mesmo que a leitura da IA falhe logo abaixo.
     setSaved(next);
     writeVacancyDraft(next);
     setStatus("analyzing");
 
+    await trackAnalysis(next);
+  };
+
+  /** Acompanha o parsing até o fim e traduz o desfecho para a tela. */
+  const trackAnalysis = async (target: VacancyDraft) => {
     const controller = new AbortController();
     polling.current = controller;
 
     try {
-      const analyzed = await waitForVacancyParsing(next.id, controller.signal);
+      const analyzed = await waitForVacancyParsing(target.id, controller.signal);
       if (controller.signal.aborted) return;
 
-      const withProfile = { ...next, profile: analyzed.parsedProfile };
+      const withProfile = { ...target, profile: analyzed.parsedProfile };
       setSaved(withProfile);
       writeVacancyDraft(withProfile);
-    } catch {
-      // A análise é um complemento: se ela falhar, a vaga salva continua
-      // valendo e o fluxo segue sem o perfil, em vez de perder o cadastro.
+      setAnalysis(describeAnalysis(analyzed));
+    } catch (cause) {
       if (controller.signal.aborted) return;
+      setAnalysis(toAnalysisProblem(cause));
     }
 
     setStatus("saved");
+  };
+
+  const retryAnalysis = async () => {
+    if (!saved || status === "analyzing") return;
+
+    polling.current?.abort();
+    setAnalysis(null);
+    setStatus("analyzing");
+
+    const withoutProfile: VacancyDraft = { ...saved, profile: null };
+    setSaved(withoutProfile);
+    writeVacancyDraft(withoutProfile);
+
+    try {
+      await reparseVacancy(saved.id);
+    } catch (cause) {
+      setAnalysis(toAnalysisProblem(cause));
+      setStatus("saved");
+      return;
+    }
+
+    await trackAnalysis(withoutProfile);
   };
 
   return (
@@ -236,15 +279,19 @@ export function JobDescriptionPage() {
           </div>
         )}
 
-        {status === "saved" && saved && <SavedCard vacancy={saved} />}
+        {status === "saved" && saved && (
+          <SavedCard
+            vacancy={saved}
+            analysis={analysis}
+            onRetryAnalysis={retryAnalysis}
+          />
+        )}
 
         <div className="mt-9 flex flex-wrap justify-between gap-3">
           <ButtonLink to={paths.dashboard} variant="ghost">
             ← Voltar
           </ButtonLink>
 
-          {/* Durante a análise a vaga já está gravada, então seguir é permitido:
-              esperar a IA é opcional, não um pedágio. */}
           <Button
             onClick={() => navigate(paths.repoChooser)}
             disabled={status !== "saved" && status !== "analyzing"}
@@ -258,13 +305,17 @@ export function JobDescriptionPage() {
   );
 }
 
-/**
- * Confirmação do que o backend guardou, com a leitura que a IA fez da vaga
- * (RF-2.2). Quando o perfil vier nulo — parsing incompleto ou falho — a tela
- * mostra só o que existe de verdade, em vez de inventar uma análise.
- */
-function SavedCard({ vacancy }: { vacancy: VacancyDraft }) {
+function SavedCard({
+  vacancy,
+  analysis,
+  onRetryAnalysis,
+}: {
+  vacancy: VacancyDraft;
+  analysis: AnalysisOutcome | null;
+  onRetryAnalysis: () => void;
+}) {
   const profile = vacancy.profile ?? null;
+  const problem = analysis?.state === "problem" ? analysis : null;
 
   return (
     <div className="mt-7 animate-rise rounded-lg border border-border bg-surface p-5.5">
@@ -279,6 +330,10 @@ function SavedCard({ vacancy }: { vacancy: VacancyDraft }) {
         Guardamos a descrição desta vaga na sua conta. Agora escolha os
         repositórios que entram na análise.
       </p>
+
+      {problem && (
+        <AnalysisProblem problem={problem} onRetry={onRetryAnalysis} />
+      )}
 
       {profile?.outOfScope && (
         <p
@@ -296,13 +351,43 @@ function SavedCard({ vacancy }: { vacancy: VacancyDraft }) {
 
       <p className="mt-4 font-mono text-[11.5px] text-fg-muted">
         {vacancy.description.length} caracteres · vaga #{vacancy.id.slice(0, 8)}
-        {profile === null && " · análise indisponível"}
+        {profile === null && !problem && " · análise indisponível"}
       </p>
     </div>
   );
 }
 
-/** O que a IA extraiu da descrição: stack, senioridade e competências. */
+/**
+ * A análise falhou, mas a vaga está salva. O texto precisa deixar claro que o
+ * problema foi nosso, e não na descrição que a pessoa escreveu.
+ */
+function AnalysisProblem({
+  problem,
+  onRetry,
+}: {
+  problem: Extract<AnalysisOutcome, { state: "problem" }>;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      className="mt-4 rounded-md border border-[--alpha(var(--color-ember-400)/45%)] bg-[--alpha(var(--color-ember-400)/12%)] px-3.5 py-3"
+    >
+      <p className="text-[13.5px] leading-[1.55] text-fg-2">
+        Não conseguimos analisar esta vaga. {problem.detail}
+      </p>
+      <p className="mt-1 font-mono text-[11.5px] text-fg-muted">
+        {problem.hint}
+      </p>
+      {problem.retryable && (
+        <Button variant="secondary" onClick={onRetry} className="mt-3">
+          Analisar de novo
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function VacancyProfileSummary({ profile }: { profile: ParsedVacancyProfile }) {
   const hasContent =
     profile.technologies.length > 0 || profile.keyCompetencies.length > 0;

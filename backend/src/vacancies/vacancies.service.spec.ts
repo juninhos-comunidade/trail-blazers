@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { VacanciesService } from './vacancies.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { VacancyParserService } from './vacancy-parser.service';
+import { VacancyParseError, VacancyParserService } from './vacancy-parser.service';
 import { VACANCY_MIN_LENGTH, type ParsedVacancyProfile } from './schemas/vacancy.schema';
 
 const USER_ID = 'user-abc';
@@ -24,7 +25,6 @@ const TECH_PROFILE: ParsedVacancyProfile = {
   outOfScope: false,
 };
 
-/** Fixture no shape do BANCO (o que o Prisma devolve), não no shape da resposta. */
 const makeRow = (overrides: Record<string, unknown> = {}) => ({
   id: 'vaga-1',
   userId: USER_ID,
@@ -34,14 +34,14 @@ const makeRow = (overrides: Record<string, unknown> = {}) => ({
   parsedSkills: null,
   parseConfidence: null,
   parsedOutOfScope: null,
+  parseStatus: 'pending',
+  parseFailureReason: null,
   createdAt: new Date(),
   ...overrides,
 });
 
-/** Deixa a fila de microtasks drenar para o parsing em background concluir. */
 const flushBackground = () => new Promise((r) => setTimeout(r, 20));
 
-/** Dados passados ao `prisma.vacancy.update` na chamada mais recente. */
 const lastUpdateData = (update: jest.Mock): Record<string, unknown> => {
   const call = update.mock.calls.at(-1) as [{ data: Record<string, unknown> }] | undefined;
   return call?.[0].data ?? {};
@@ -75,8 +75,6 @@ describe('VacanciesService', () => {
     service = module.get(VacanciesService);
   });
 
-  // ─── RF-2.1 AC1 — persiste e responde antes do parsing ────────────────────
-
   it('cria vaga e retorna imediatamente com parsingCompleted=false', async () => {
     prisma.vacancy.create.mockResolvedValue(makeRow());
     parser.parse.mockResolvedValue(GENERIC_PROFILE);
@@ -91,8 +89,6 @@ describe('VacanciesService', () => {
       data: { userId: USER_ID, rawDescription: VALID_DESC },
     });
   });
-
-  // ─── RF-2.2 — o parsing grava o perfil em background ──────────────────────
 
   it('grava o perfil analisado no banco após o parsing', async () => {
     prisma.vacancy.create.mockResolvedValue(makeRow());
@@ -110,6 +106,8 @@ describe('VacanciesService', () => {
         parsedSkills: ['APIs REST'],
         parseConfidence: 1.0,
         parsedOutOfScope: false,
+        parseStatus: 'done',
+        parseFailureReason: null,
       },
     });
   });
@@ -125,8 +123,6 @@ describe('VacanciesService', () => {
     expect(lastUpdateData(prisma.vacancy.update).parsedOutOfScope).toBe(true);
   });
 
-  // ─── o parsing nunca pode derrubar o cadastro ─────────────────────────────
-
   it('não rejeita o cadastro quando o parser lança', async () => {
     prisma.vacancy.create.mockResolvedValue(makeRow());
     parser.parse.mockRejectedValue(new Error('boom'));
@@ -138,7 +134,22 @@ describe('VacanciesService', () => {
     expect(result.id).toBe('vaga-1');
   });
 
-  it('grava perfil vazio quando o parser lança, para o polling terminar', async () => {
+  it('marca a vaga como failed quando o parser lança, sem gravar perfil falso', async () => {
+    prisma.vacancy.create.mockResolvedValue(makeRow());
+    parser.parse.mockRejectedValue(new VacancyParseError('ai_unavailable', 'IA fora do ar'));
+    prisma.vacancy.update.mockResolvedValue(undefined);
+
+    await service.create(USER_ID, { description: VALID_DESC });
+    await flushBackground();
+
+    const data = lastUpdateData(prisma.vacancy.update);
+    expect(data.parseStatus).toBe('failed');
+    expect(data.parseFailureReason).toBe('ai_unavailable');
+    expect(data.parseConfidence).toBeUndefined();
+    expect(data.parsedStack).toBeUndefined();
+  });
+
+  it('usa reason=unknown quando o erro não é um VacancyParseError', async () => {
     prisma.vacancy.create.mockResolvedValue(makeRow());
     parser.parse.mockRejectedValue(new Error('boom'));
     prisma.vacancy.update.mockResolvedValue(undefined);
@@ -146,7 +157,20 @@ describe('VacanciesService', () => {
     await service.create(USER_ID, { description: VALID_DESC });
     await flushBackground();
 
-    expect(lastUpdateData(prisma.vacancy.update).parseConfidence).toBe(0.5);
+    expect(lastUpdateData(prisma.vacancy.update).parseFailureReason).toBe('unknown');
+  });
+
+  it('devolve parsedProfile nulo e parsingCompleted=true para vaga com falha', async () => {
+    prisma.vacancy.findFirst.mockResolvedValue(
+      makeRow({ parseStatus: 'failed', parseFailureReason: 'ai_unavailable' }),
+    );
+
+    const result = await service.findOne('vaga-1', USER_ID);
+
+    expect(result.parseStatus).toBe('failed');
+    expect(result.parseFailureReason).toBe('ai_unavailable');
+    expect(result.parsedProfile).toBeNull();
+    expect(result.parsingCompleted).toBe(true);
   });
 
   it('não derruba o processo quando a gravação no banco falha', async () => {
@@ -157,8 +181,6 @@ describe('VacanciesService', () => {
     await expect(service.create(USER_ID, { description: VALID_DESC })).resolves.toBeDefined();
     await flushBackground();
   });
-
-  // ─── findOne ──────────────────────────────────────────────────────────────
 
   it('lança NotFoundException para vaga inexistente', async () => {
     prisma.vacancy.findFirst.mockResolvedValue(null);
@@ -174,6 +196,7 @@ describe('VacanciesService', () => {
         parsedSkills: ['APIs REST'],
         parseConfidence: 1.0,
         parsedOutOfScope: false,
+        parseStatus: 'done',
       }),
     );
 
@@ -188,7 +211,7 @@ describe('VacanciesService', () => {
 
   it('devolve outOfScope=true quando a coluna está marcada', async () => {
     prisma.vacancy.findFirst.mockResolvedValue(
-      makeRow({ parseConfidence: 0.5, parsedOutOfScope: true }),
+      makeRow({ parseConfidence: 0.5, parsedOutOfScope: true, parseStatus: 'done' }),
     );
 
     const result = await service.findOne('vaga-1', USER_ID);
@@ -196,7 +219,59 @@ describe('VacanciesService', () => {
     expect(result.parsedProfile?.outOfScope).toBe(true);
   });
 
-  // ─── findAll ──────────────────────────────────────────────────────────────
+  describe('reparse', () => {
+    it('limpa o resultado anterior e dispara a análise de novo', async () => {
+      const failed = makeRow({ parseStatus: 'failed', parseFailureReason: 'timeout' });
+      prisma.vacancy.findFirst.mockResolvedValue(failed);
+      prisma.vacancy.update.mockResolvedValue(makeRow({ parseStatus: 'pending' }));
+      parser.parse.mockResolvedValue(TECH_PROFILE);
+
+      const result = await service.reparse('vaga-1', USER_ID);
+
+      expect(result.parseStatus).toBe('pending');
+      expect(result.parsedProfile).toBeNull();
+
+      const reset = prisma.vacancy.update.mock.calls[0] as [{ data: Record<string, unknown> }];
+      expect(reset[0].data).toEqual({
+        parseStatus: 'pending',
+        parseFailureReason: null,
+        parsedStack: Prisma.DbNull,
+        parsedSeniority: null,
+        parsedSkills: Prisma.DbNull,
+        parseConfidence: null,
+        parsedOutOfScope: null,
+      });
+
+      await flushBackground();
+      expect(parser.parse.mock.calls).toEqual([[VALID_DESC]]);
+      expect(lastUpdateData(prisma.vacancy.update).parseStatus).toBe('done');
+    });
+
+    it('recusa reprocessar uma vaga de outro usuário', async () => {
+      prisma.vacancy.findFirst.mockResolvedValue(null);
+
+      await expect(service.reparse('vaga-1', 'outro-user')).rejects.toThrow(NotFoundException);
+      expect(prisma.vacancy.update).not.toHaveBeenCalled();
+    });
+
+    it('recusa reprocessar quando a análise ainda está em andamento', async () => {
+      prisma.vacancy.findFirst.mockResolvedValue(makeRow({ parseStatus: 'pending' }));
+
+      await expect(service.reparse('vaga-1', USER_ID)).rejects.toThrow(ConflictException);
+      expect(prisma.vacancy.update).not.toHaveBeenCalled();
+    });
+
+    it('grava a nova falha quando a reanálise também falha', async () => {
+      prisma.vacancy.findFirst.mockResolvedValue(makeRow({ parseStatus: 'failed' }));
+      prisma.vacancy.update.mockResolvedValue(makeRow({ parseStatus: 'pending' }));
+      parser.parse.mockRejectedValue(new VacancyParseError('invalid_api_key', 'chave ruim'));
+
+      await service.reparse('vaga-1', USER_ID);
+      await flushBackground();
+
+      expect(lastUpdateData(prisma.vacancy.update).parseFailureReason).toBe('invalid_api_key');
+    });
+  });
 
   it('retorna lista de vagas do usuário em ordem decrescente', async () => {
     prisma.vacancy.findMany.mockResolvedValue([makeRow({ id: 'v2' }), makeRow({ id: 'v1' })]);

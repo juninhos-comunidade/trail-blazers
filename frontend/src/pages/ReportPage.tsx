@@ -23,11 +23,6 @@ const seniorityLabels: Record<string, string> = {
   lead: "Liderança técnica",
 };
 
-/**
- * Cabeçalho do relatório com a vaga e o repositório reais. As notas e os
- * scores continuam fictícios (o épico de avaliação não existe), mas identificar
- * a entrevista errada seria confuso mesmo numa tela marcada como mock.
- */
 function buildEyebrow(
   vacancy: VacancyDraft | null,
   repository: RepositoryDraft | null,
@@ -200,11 +195,6 @@ function Card({
   );
 }
 
-/**
- * Notas de aderência a partir da vaga e do repositório reais. O percentual
- * continua fictício — só o épico de avaliação pode calculá-lo —, mas as
- * tecnologias citadas são as que a IA extraiu da vaga que a pessoa colou.
- */
 function buildAdherenceNotes(
   vacancy: VacancyDraft | null,
   repository: RepositoryDraft | null,

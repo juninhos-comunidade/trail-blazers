@@ -21,15 +21,10 @@ import {
 } from "@lib/repositories-api";
 import { paths } from "@routes/paths";
 
-/** Quanto do arquivo principal segue para a etapa 3 (o resto fica no backend). */
 const EXCERPT_CHARS = 700;
 
 type Status = "loading" | "error" | "success" | "analyzing";
 
-/**
- * Teto de repositórios por entrevista. Hoje vale 1 por simplicidade; a tela já
- * é multisseleção, então ampliar é só mexer nesta constante.
- */
 const SELECTION_LIMIT = 1;
 
 function InfoIcon() {
@@ -54,8 +49,6 @@ function InfoIcon() {
 }
 
 export function RepositoryChooserPage() {
-  // A etapa analisa repositórios *contra uma vaga*; sem a vaga salva na etapa 1
-  // (acesso direto pela URL, ou reload em outra aba) não há o que analisar.
   const [vacancy] = useState(readVacancyDraft);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<RepositoriesError | null>(null);
@@ -109,14 +102,12 @@ export function RepositoryChooserPage() {
 
   const hasRepositories = status === "success" && repositories.length > 0;
   const canStart = hasRepositories && selectedIds.length > 0;
-  // Sem lista utilizável, seguir sem repositório é a única saída da etapa.
   const offerSkip = status === "error" || (status === "success" && !hasRepositories);
 
   if (!vacancy) {
     return <Navigate to={paths.newInterview} replace />;
   }
 
-  /** Saída legítima: a entrevista só perde o contexto de código. */
   const skipRepositories = () => {
     clearRepositoryDraft();
     navigate(paths.interview);
@@ -138,8 +129,6 @@ export function RepositoryChooserPage() {
       const analysis = await analyzeRepo(selectedRepo.owner, selectedRepo.name);
       const mainFile = analysis.relevantFiles[0];
 
-      // A etapa 3 recebe só o resumo: o conteúdo completo continua no cache do
-      // backend, que é quem vai montar o prompt da entrevista.
       writeRepositoryDraft({
         owner: selectedRepo.owner,
         name: selectedRepo.name,
@@ -247,16 +236,11 @@ export function RepositoryChooserPage() {
           />
         )}
 
-
-
         <div className="mt-9 flex flex-wrap justify-between gap-3">
           <ButtonLink to={paths.newInterview} variant="ghost" disabled={status === "analyzing"}>
             ← Voltar
           </ButtonLink>
 
-          {/* Precisa ser um Button, e não um ButtonLink: o link navegava no
-              mesmo clique que dispara a análise, então o `await` abaixo nunca
-              segurava a tela e um erro de análise não chegava a aparecer. */}
           <Button
             variant="ember"
             disabled={status === "analyzing" || (!offerSkip && !canStart)}
@@ -283,11 +267,6 @@ interface FallbackPanelProps {
   action?: ReactNode;
 }
 
-/**
- * Estado sem lista para escolher — erro na busca ou conta sem repositórios.
- * Diz o que aconteceu, e a saída para seguir mesmo assim fica no rodapé da
- * etapa, junto com o "Voltar".
- */
 function FallbackPanel({
   title,
   detail,

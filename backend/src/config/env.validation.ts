@@ -30,7 +30,7 @@ export const envValidationSchema = Joi.object({
   OPENROUTER_API_KEY: Joi.string().required().messages({
     'any.required': 'OPENROUTER_API_KEY é obrigatória. Gere em openrouter.ai/keys',
   }),
-  AI_MODEL: Joi.string().default('meta-llama/llama-3.1-8b-instruct:free'),
+  AI_MODEL: Joi.string().default('openai/gpt-oss-20b:free'),
   APP_TITLE: Joi.string().default('Trail Blazers'),
 
   // JWT

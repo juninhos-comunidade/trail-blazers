@@ -7,8 +7,6 @@ const pipe = new ZodValidationPipe(CreateVacancySchema);
 const valid = 'a'.repeat(VACANCY_MIN_LENGTH + 5);
 
 describe('ZodValidationPipe — CreateVacancySchema', () => {
-  // ─── RF-2.1 AC2 — mínimo ─────────────────────────────────────────────────
-
   it('lança BadRequestException quando descrição está vazia', () => {
     expect(() => pipe.transform({ description: '' })).toThrow(BadRequestException);
   });
@@ -17,18 +15,14 @@ describe('ZodValidationPipe — CreateVacancySchema', () => {
     expect(() => pipe.transform({ description: 'curto' })).toThrow(BadRequestException);
   });
 
-  // ─── RF-2.1 AC3 — máximo ─────────────────────────────────────────────────
-
   it('lança BadRequestException quando descrição excede o limite máximo', () => {
     const tooLong = 'x'.repeat(VACANCY_MAX_LENGTH + 1);
     expect(() => pipe.transform({ description: tooLong })).toThrow(BadRequestException);
   });
 
-  // ─── happy path ───────────────────────────────────────────────────────────
-
   it('passa e trimma descrição válida', () => {
     const result = pipe.transform({ description: `  ${valid}  ` });
-    expect(result.description).toBe(valid); // trim aplicado pelo .transform()
+    expect(result.description).toBe(valid);
     expect(result.description.length).toBe(valid.length);
   });
 

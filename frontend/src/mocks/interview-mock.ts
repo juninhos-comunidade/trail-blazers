@@ -1,12 +1,3 @@
-/**
- * Dados fictícios das telas ainda não implementadas (entrevista e relatório) e
- * do histórico do dashboard. Existem só para dar um fluxo navegável de ponta a
- * ponta enquanto os épicos reais não chegam — nada aqui vem do backend. Toda
- * tela que consome este arquivo exibe o MockBanner.
- *
- * A etapa da vaga saiu daqui: ela grava de verdade via POST /vacancies.
- */
-
 export interface MockSession {
   id: string;
   title: string;
@@ -85,7 +76,6 @@ export interface MockMessage {
   code?: string;
 }
 
-/** Mensagens já na tela quando a entrevista abre (perguntas 1 a 3). */
 export const seedMessages: MockMessage[] = [
   {
     from: "ai",
@@ -124,7 +114,6 @@ export const seedMessages: MockMessage[] = [
   },
 ];
 
-/** Perguntas 4 a 8, liberadas conforme o usuário responde. */
 export const queuedQuestions: MockMessage[] = [
   {
     from: "ai",
@@ -158,13 +147,6 @@ export const closingMessage: MockMessage = {
   text: "É isso — entrevista concluída! Analisei suas respostas contra a vaga e seu relatório está pronto. Spoiler: você foi melhor do que imagina.",
 };
 
-// ─── Personalização ─────────────────────────────────────────────────────────
-
-/**
- * O que veio de verdade das etapas 1 e 2. As perguntas continuam fictícias,
- * mas a conversa passa a citar a vaga e o repositório reais — sem isso a tela
- * abria falando de uma vaga na "Acme" que a pessoa nunca digitou.
- */
 export interface InterviewContext {
   seniority?: string;
   technologies: string[];
@@ -194,10 +176,6 @@ function buildOpeningMessage(context: InterviewContext): MockMessage {
   };
 }
 
-/**
- * A pergunta de análise de código usa um arquivo real do repositório quando
- * ele existe. Sem repositório escolhido, cai no trecho fictício de sempre.
- */
 function buildCodeQuestion(context: InterviewContext): MockMessage {
   const { excerpt, excerptPath, repositoryName } = context;
   if (!excerpt || !excerptPath) return CODE_QUESTION_FALLBACK;
@@ -211,11 +189,9 @@ function buildCodeQuestion(context: InterviewContext): MockMessage {
   };
 }
 
-/** Índice da pergunta de código dentro de `seedMessages`. */
 const CODE_QUESTION_INDEX = 5;
 const CODE_QUESTION_FALLBACK = seedMessages[CODE_QUESTION_INDEX];
 
-/** Mensagens iniciais já ajustadas à vaga e ao repositório reais. */
 export function buildSeedMessages(context: InterviewContext): MockMessage[] {
   const messages = [...seedMessages];
 
@@ -225,11 +201,6 @@ export function buildSeedMessages(context: InterviewContext): MockMessage[] {
   return messages;
 }
 
-/**
- * Respostas de exemplo ajustadas ao mesmo contexto. A resposta da pergunta de
- * código é escrita para o trecho fictício; com código real na tela ela viraria
- * um não-sequitur, então dá lugar a uma genérica.
- */
 export function buildSampleAnswers(
   context: InterviewContext,
 ): Record<number, string> {
@@ -242,10 +213,8 @@ export function buildSampleAnswers(
 }
 
 export const TOTAL_QUESTIONS = 8;
-/** Índice da pergunta já na tela quando a entrevista abre. */
 export const FIRST_QUESTION_INDEX = 3;
 
-/** Respostas de exemplo, por número da pergunta, para o botão de preencher. */
 export const sampleAnswers: Record<number, string> = {
   3: "Na época priorizei clareza, mas hoje vejo o N+1. Faria uma única consulta de itens com $in nos ids dos pedidos (ou um aggregate) e adicionaria paginação no endpoint.",
   4: "Precisava de SEO nas páginas do blog e as imagens estavam pesadas. Com Next ganhei SSG e next/image — o LCP caiu bastante. O custo foi migrar rotas e variáveis de ambiente.",

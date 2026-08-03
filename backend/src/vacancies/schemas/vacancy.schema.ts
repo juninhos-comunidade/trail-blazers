@@ -1,20 +1,21 @@
 import { z } from 'zod';
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
-
 export const VACANCY_MIN_LENGTH = 50;
 export const VACANCY_MAX_LENGTH = 10_000;
-
-// ─── Enums ───────────────────────────────────────────────────────────────────
 
 export const SeniorityLevelSchema = z.enum(['junior', 'mid', 'senior', 'lead', 'unknown']);
 
 export const ParsingConfidenceSchema = z.enum(['high', 'low']);
 
+/**
+ * Estado do processo de análise — responde apenas "já terminou?".
+ * O que a análise descobriu fica no parsedProfile.
+ */
+export const ParseStatusSchema = z.enum(['pending', 'done', 'failed']);
+
 export type SeniorityLevel = z.infer<typeof SeniorityLevelSchema>;
 export type ParsingConfidence = z.infer<typeof ParsingConfidenceSchema>;
-
-// ─── ParsedVacancyProfile ────────────────────────────────────────────────────
+export type ParseStatus = z.infer<typeof ParseStatusSchema>;
 
 export const ParsedVacancyProfileSchema = z.object({
   technologies: z.array(z.string()),
@@ -26,8 +27,6 @@ export const ParsedVacancyProfileSchema = z.object({
 
 export type ParsedVacancyProfile = z.infer<typeof ParsedVacancyProfileSchema>;
 
-// ─── Schema que a IA deve retornar (com coerção + defaults) ─────────────────
-
 export const AiResponseSchema = z
   .object({
     technologies: z.array(z.string()).max(15).default([]),
@@ -38,11 +37,8 @@ export const AiResponseSchema = z
   })
   .transform((data) => ({
     ...data,
-    // Se a IA não identificou tecnologias, forçamos confiança baixa
     confidence: data.technologies.length === 0 ? ('low' as const) : data.confidence,
   }));
-
-// ─── DTO de entrada ──────────────────────────────────────────────────────────
 
 export const CreateVacancySchema = z.object({
   description: z
@@ -54,18 +50,14 @@ export const CreateVacancySchema = z.object({
 
 export type CreateVacancyDto = z.infer<typeof CreateVacancySchema>;
 
-// ─── Tipo de resposta (espelho do modelo Prisma + parsedProfile tipado) ──────
-
 export interface VacancyResponse {
   id: string;
   userId: string;
-  /**
-   * Mantém o nome da coluna do Prisma de propósito: o front (`vacancies-api.ts`
-   * e `JobDescriptionPage.tsx`) já consome `rawDescription` desde o RF-2.1.
-   * Renomear aqui quebraria a tela de cadastro sem erro visível.
-   */
   rawDescription: string;
   parsedProfile: ParsedVacancyProfile | null;
+  parseStatus: ParseStatus;
+  parseFailureReason: string | null;
+  /** Derivado de parseStatus. Mantido porque o frontend usa como fim do polling. */
   parsingCompleted: boolean;
   createdAt: Date;
 }

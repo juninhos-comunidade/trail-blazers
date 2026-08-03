@@ -10,7 +10,7 @@ import { RepositorySummary } from './types/repos-summary';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
-const MAX_CONTEXT_CHARS = 80000; // ~20.000 tokens
+const MAX_CONTEXT_CHARS = 80000;
 const IGNORED_DIRS = new Set([
   'node_modules',
   'dist',

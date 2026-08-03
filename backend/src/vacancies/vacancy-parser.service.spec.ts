@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { VacancyParserService, AiProviderPort } from './vacancy-parser.service';
+import {
+  VacancyParserService,
+  AiProviderPort,
+  VacancyParseError,
+  AiError,
+} from './vacancy-parser.service';
 
 const TECH_VACANCY = `
 Vaga: Desenvolvedor Node.js Pleno
@@ -28,8 +33,6 @@ describe('VacancyParserService', () => {
     service = module.get(VacancyParserService);
   });
 
-  // ─── RF-2.2 AC1 ───────────────────────────────────────────────────────────
-
   it('extrai tecnologias, senioridade e competências em vaga tech', async () => {
     ai.complete.mockResolvedValue(
       JSON.stringify({
@@ -49,34 +52,59 @@ describe('VacancyParserService', () => {
     expect(result.outOfScope).toBe(false);
   });
 
-  // ─── RF-2.2 AC3 — fallback genérico ──────────────────────────────────────
+  it('propaga invalid_api_key vindo do provedor', async () => {
+    ai.complete.mockRejectedValue(new AiError('invalid_api_key', 'chave recusada'));
 
-  it('retorna perfil genérico quando a IA lança erro', async () => {
-    ai.complete.mockRejectedValue(new Error('timeout'));
-
-    const result = await service.parse(TECH_VACANCY);
-
-    expect(result.technologies).toEqual([]);
-    expect(result.seniorityLevel).toBe('unknown');
-    expect(result.confidence).toBe('low');
-    expect(result.outOfScope).toBe(false);
+    await expect(service.parse(TECH_VACANCY)).rejects.toMatchObject({
+      name: 'VacancyParseError',
+      reason: 'invalid_api_key',
+    });
   });
 
-  it('retorna perfil genérico quando a IA retorna JSON inválido', async () => {
+  it('propaga timeout vindo do provedor', async () => {
+    ai.complete.mockRejectedValue(new AiError('timeout', 'demorou demais'));
+
+    await expect(service.parse(TECH_VACANCY)).rejects.toMatchObject({ reason: 'timeout' });
+  });
+
+  it('traduz unavailable do provedor para ai_unavailable', async () => {
+    ai.complete.mockRejectedValue(new AiError('unavailable', 'rede caiu'));
+
+    await expect(service.parse(TECH_VACANCY)).rejects.toMatchObject({
+      reason: 'ai_unavailable',
+    });
+  });
+
+  it('usa ai_unavailable quando o erro não é um AiError', async () => {
+    ai.complete.mockRejectedValue(new Error('boom'));
+
+    await expect(service.parse(TECH_VACANCY)).rejects.toMatchObject({
+      reason: 'ai_unavailable',
+    });
+  });
+
+  it('lança invalid_response quando a IA retorna JSON inválido', async () => {
     ai.complete.mockResolvedValue('resposta em texto livre sem JSON');
 
-    const result = await service.parse(TECH_VACANCY);
+    await expect(service.parse(TECH_VACANCY)).rejects.toBeInstanceOf(VacancyParseError);
+    await expect(service.parse(TECH_VACANCY)).rejects.toMatchObject({
+      reason: 'invalid_response',
+    });
+  });
 
-    expect(result.confidence).toBe('low');
-    expect(result.technologies).toEqual([]);
+  it('lança invalid_response quando o JSON não bate com o schema', async () => {
+    ai.complete.mockResolvedValue(JSON.stringify({ technologies: 'React' }));
+
+    await expect(service.parse(TECH_VACANCY)).rejects.toMatchObject({
+      reason: 'invalid_response',
+    });
   });
 
   it('usa .catch() do Zod e retorna confiança baixa para campos inválidos', async () => {
-    // seniorityLevel inválido → AiResponseSchema faz .catch("unknown")
     ai.complete.mockResolvedValue(
       JSON.stringify({
         technologies: ['React'],
-        seniorityLevel: 'ninja', // valor inválido
+        seniorityLevel: 'ninja',
         keyCompetencies: [],
         confidence: 'high',
         outOfScope: false,
@@ -88,8 +116,6 @@ describe('VacancyParserService', () => {
     expect(result.seniorityLevel).toBe('unknown');
     expect(result.technologies).toEqual(['React']);
   });
-
-  // ─── edge case: out of scope ──────────────────────────────────────────────
 
   it('detecta vaga fora do escopo via heurística sem chamar a IA', async () => {
     const result = await service.parse(NON_TECH_VACANCY);
@@ -122,7 +148,7 @@ describe('VacancyParserService', () => {
         technologies: [],
         seniorityLevel: 'junior',
         keyCompetencies: ['trabalho em equipe'],
-        confidence: 'high', // IA diz high, mas sem tech → Zod transforma para low
+        confidence: 'high',
         outOfScope: false,
       }),
     );
