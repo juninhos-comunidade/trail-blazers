@@ -108,11 +108,39 @@ export async function fetchRepos(): Promise<RepoSummary[]> {
 
 }
 
-export async function analyzeRepo(owner: string, name: string) {
+/** Arquivo do repositório que o backend selecionou para o contexto da IA. */
+export interface AnalyzedFile {
+  path: string;
+  content: string;
+}
+
+/** Retorno de `GET /repositories/:owner/:repo/analyze`. */
+export interface RepositoryAnalysis {
+  relevantFiles: AnalyzedFile[];
+  /** Arquivos descartados por estourar o limite de contexto. */
+  omittedFiles: string[];
+  totalTokensEstimative: number;
+}
+
+export async function analyzeRepo(
+  owner: string,
+  name: string,
+): Promise<RepositoryAnalysis> {
   const token = readToken();
-  const response = await fetch(`${API_URL}/repositories/${owner}/${name}/analyze`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/repositories/${owner}/${name}/analyze`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    // Sem este try a tela recebia o TypeError cru do fetch quando a API caía.
+    throw new RepositoriesError(
+      'Não conseguimos falar com o servidor do InterviewTrail.',
+      { hint: 'Verifique sua conexão e tente de novo.' },
+    );
+  }
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string; code?: string } | null;
@@ -126,5 +154,11 @@ export async function analyzeRepo(owner: string, name: string) {
     throw mapErrorResponse(response.status, body);
   }
 
-  return response.json();
+  try {
+    return (await response.json()) as RepositoryAnalysis;
+  } catch {
+    throw new RepositoriesError(
+      'O servidor respondeu num formato que não conseguimos ler.',
+    );
+  }
 }

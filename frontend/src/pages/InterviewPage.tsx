@@ -1,29 +1,58 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { MockBanner } from "@components/mock/MockBanner";
 import { Button, ButtonLink } from "@components/ui/Button";
 import { Logo } from "@components/ui/Logo";
 import { LogoMark } from "@components/ui/Logo";
 import { cn } from "@lib/cn";
+import { readRepositoryDraft, readVacancyDraft } from "@lib/interview-draft";
 import {
+  buildSampleAnswers,
+  buildSeedMessages,
   closingMessage,
   FIRST_QUESTION_INDEX,
   queuedQuestions,
   questionKinds,
-  sampleAnswers,
-  seedMessages,
   TOTAL_QUESTIONS,
+  type InterviewContext,
   type MockMessage,
 } from "@mocks/interview-mock";
 import { paths } from "@routes/paths";
 
 const AI_DELAY_MS = 1500;
 
+const seniorityLabels: Record<string, string> = {
+  junior: "júnior",
+  mid: "pleno",
+  senior: "sênior",
+  lead: "de liderança técnica",
+};
+
 export function InterviewPage() {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<MockMessage[]>(seedMessages);
+
+  // Sem a vaga da etapa 1 não há contra o que entrevistar (acesso direto pela
+  // URL, ou aba nova). Mesma guarda da etapa 2.
+  const [vacancy] = useState(readVacancyDraft);
+  const [repository] = useState(readRepositoryDraft);
+
+  const context = useMemo<InterviewContext>(() => {
+    const profile = vacancy?.profile ?? null;
+
+    return {
+      seniority: profile ? seniorityLabels[profile.seniorityLevel] : undefined,
+      technologies: profile?.technologies ?? [],
+      repositoryName: repository ? `${repository.owner}/${repository.name}` : undefined,
+      excerptPath: repository?.excerptPath,
+      excerpt: repository?.excerpt,
+    };
+  }, [vacancy, repository]);
+
+  const [messages, setMessages] = useState<MockMessage[]>(() =>
+    buildSeedMessages(context),
+  );
   const [questionIndex, setQuestionIndex] = useState(FIRST_QUESTION_INDEX);
   const [typing, setTyping] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -73,9 +102,13 @@ export function InterviewPage() {
   };
 
   const fillSample = () => {
-    const answer = sampleAnswers[questionIndex];
+    const answer = buildSampleAnswers(context)[questionIndex];
     if (answer && !finished) setDraft(answer);
   };
+
+  if (!vacancy) {
+    return <Navigate to={paths.newInterview} replace />;
+  }
 
   return (
     <div className="flex h-dvh flex-col">

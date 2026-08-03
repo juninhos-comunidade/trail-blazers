@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AppHeader } from "@components/app/AppHeader";
@@ -16,13 +16,24 @@ import {
 } from "@lib/interview-draft";
 import {
   createVacancy,
+  waitForVacancyParsing,
   DESCRIPTION_MAX_LENGTH,
   DESCRIPTION_MIN_LENGTH,
   VacancyError,
+  type ParsedVacancyProfile,
 } from "@lib/vacancies-api";
 import { paths } from "@routes/paths";
 
-type Status = "idle" | "saving" | "saved";
+/** `analyzing` = a vaga já está salva e a IA ainda está lendo a descrição. */
+type Status = "idle" | "saving" | "analyzing" | "saved";
+
+const seniorityLabels: Record<ParsedVacancyProfile["seniorityLevel"], string> = {
+  junior: "Júnior",
+  mid: "Pleno",
+  senior: "Sênior",
+  lead: "Liderança técnica",
+  unknown: "Não identificada",
+};
 
 /** Mesma checagem do backend (RF-2.1), para avisar antes de enviar. */
 function describeLengthProblem(text: string): string | null {
@@ -53,6 +64,11 @@ export function JobDescriptionPage() {
   const [status, setStatus] = useState<Status>(draft ? "saved" : "idle");
   const [error, setError] = useState<VacancyError | null>(null);
 
+  // Sair da tela (ou reescrever a vaga) no meio do polling precisa interrompê-lo,
+  // senão ele segue consultando o backend e escrevendo em estado desmontado.
+  const polling = useRef<AbortController | null>(null);
+  useEffect(() => () => polling.current?.abort(), []);
+
   const lengthProblem = describeLengthProblem(text);
   const tooLong = text.trim().length > DESCRIPTION_MAX_LENGTH;
 
@@ -60,6 +76,7 @@ export function JobDescriptionPage() {
     setText(next);
     // Editar a vaga invalida o que já foi salvo: a etapa precisa salvar de novo.
     if (status !== "idle") {
+      polling.current?.abort();
       setStatus("idle");
       setSaved(null);
       clearVacancyDraft();
@@ -74,14 +91,11 @@ export function JobDescriptionPage() {
     setStatus("saving");
     setError(null);
 
+    let next: VacancyDraft;
+
     try {
       const created = await createVacancy(description);
-      const next = { id: created.id, description: created.rawDescription };
-
-      setSaved(next);
-      // O id segue para as próximas etapas do fluxo.
-      writeVacancyDraft(next);
-      setStatus("saved");
+      next = { id: created.id, description: created.rawDescription };
     } catch (cause) {
       setError(
         cause instanceof VacancyError
@@ -89,7 +103,32 @@ export function JobDescriptionPage() {
           : new VacancyError("Ocorreu uma falha inesperada ao salvar a vaga."),
       );
       setStatus("idle");
+      return;
     }
+
+    // A vaga já está gravada daqui em diante: o id segue para as próximas
+    // etapas mesmo que a leitura da IA falhe logo abaixo.
+    setSaved(next);
+    writeVacancyDraft(next);
+    setStatus("analyzing");
+
+    const controller = new AbortController();
+    polling.current = controller;
+
+    try {
+      const analyzed = await waitForVacancyParsing(next.id, controller.signal);
+      if (controller.signal.aborted) return;
+
+      const withProfile = { ...next, profile: analyzed.parsedProfile };
+      setSaved(withProfile);
+      writeVacancyDraft(withProfile);
+    } catch {
+      // A análise é um complemento: se ela falhar, a vaga salva continua
+      // valendo e o fluxo segue sem o perfil, em vez de perder o cadastro.
+      if (controller.signal.aborted) return;
+    }
+
+    setStatus("saved");
   };
 
   return (
@@ -185,6 +224,18 @@ export function JobDescriptionPage() {
           </div>
         )}
 
+        {status === "analyzing" && (
+          <div
+            aria-live="polite"
+            className="mt-7 flex items-center gap-2.5 rounded-lg border border-border bg-surface p-5.5"
+          >
+            <Spinner size={16} label="Analisando a vaga" />
+            <span className="font-mono text-xs text-fg-2">
+              Vaga salva. A IA está lendo a descrição…
+            </span>
+          </div>
+        )}
+
         {status === "saved" && saved && <SavedCard vacancy={saved} />}
 
         <div className="mt-9 flex flex-wrap justify-between gap-3">
@@ -192,9 +243,11 @@ export function JobDescriptionPage() {
             ← Voltar
           </ButtonLink>
 
+          {/* Durante a análise a vaga já está gravada, então seguir é permitido:
+              esperar a IA é opcional, não um pedágio. */}
           <Button
             onClick={() => navigate(paths.repoChooser)}
-            disabled={status !== "saved"}
+            disabled={status !== "saved" && status !== "analyzing"}
             className="max-sm:w-full"
           >
             Continuar →
@@ -206,11 +259,13 @@ export function JobDescriptionPage() {
 }
 
 /**
- * Confirmação do que o backend guardou. A leitura da vaga (stack, senioridade,
- * competências-chave) depende do épico de análise; enquanto esses campos vierem
- * nulos, a tela mostra o que existe de verdade em vez de inventar.
+ * Confirmação do que o backend guardou, com a leitura que a IA fez da vaga
+ * (RF-2.2). Quando o perfil vier nulo — parsing incompleto ou falho — a tela
+ * mostra só o que existe de verdade, em vez de inventar uma análise.
  */
 function SavedCard({ vacancy }: { vacancy: VacancyDraft }) {
+  const profile = vacancy.profile ?? null;
+
   return (
     <div className="mt-7 animate-rise rounded-lg border border-border bg-surface p-5.5">
       <div className="mb-4 flex items-center gap-2 text-trail-text">
@@ -225,9 +280,89 @@ function SavedCard({ vacancy }: { vacancy: VacancyDraft }) {
         repositórios que entram na análise.
       </p>
 
+      {profile?.outOfScope && (
+        <p
+          role="note"
+          className="mt-4 rounded-md border border-[--alpha(var(--color-ember-400)/45%)] bg-[--alpha(var(--color-ember-400)/12%)] px-3.5 py-3 text-[13.5px] leading-[1.55] text-fg-2"
+        >
+          Esta vaga não parece ser da área de tecnologia. Você pode seguir mesmo
+          assim, mas as perguntas tendem a ficar genéricas.
+        </p>
+      )}
+
+      {profile && !profile.outOfScope && (
+        <VacancyProfileSummary profile={profile} />
+      )}
+
       <p className="mt-4 font-mono text-[11.5px] text-fg-muted">
         {vacancy.description.length} caracteres · vaga #{vacancy.id.slice(0, 8)}
+        {profile === null && " · análise indisponível"}
       </p>
+    </div>
+  );
+}
+
+/** O que a IA extraiu da descrição: stack, senioridade e competências. */
+function VacancyProfileSummary({ profile }: { profile: ParsedVacancyProfile }) {
+  const hasContent =
+    profile.technologies.length > 0 || profile.keyCompetencies.length > 0;
+
+  return (
+    <div className="mt-5 border-t border-border pt-5">
+      <p className="mb-3 font-mono text-[11px] tracking-[0.08em] text-fg-muted uppercase">
+        O que entendemos da vaga
+      </p>
+
+      <dl className="flex flex-col gap-3.5">
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <dt className="font-mono text-[11.5px] text-fg-muted">Senioridade</dt>
+          <dd className="text-[14px] text-fg-2">
+            {seniorityLabels[profile.seniorityLevel]}
+          </dd>
+        </div>
+
+        {profile.technologies.length > 0 && (
+          <div>
+            <dt className="mb-2 font-mono text-[11.5px] text-fg-muted">
+              Tecnologias
+            </dt>
+            <dd className="flex flex-wrap gap-1.5">
+              {profile.technologies.map((technology) => (
+                <span
+                  key={technology}
+                  className="rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
+                >
+                  {technology}
+                </span>
+              ))}
+            </dd>
+          </div>
+        )}
+
+        {profile.keyCompetencies.length > 0 && (
+          <div>
+            <dt className="mb-1.5 font-mono text-[11.5px] text-fg-muted">
+              Competências-chave
+            </dt>
+            <dd className="text-[14px] leading-[1.6] text-fg-2">
+              {profile.keyCompetencies.join(" · ")}
+            </dd>
+          </div>
+        )}
+      </dl>
+
+      {!hasContent && (
+        <p className="text-[13.5px] leading-[1.55] text-fg-2">
+          A IA não conseguiu extrair tecnologias desta descrição. A entrevista
+          segue, com perguntas mais gerais.
+        </p>
+      )}
+
+      {hasContent && profile.confidence === "low" && (
+        <p className="mt-3.5 font-mono text-[11px] text-fg-muted">
+          Leitura com confiança baixa — confira se a descrição está completa.
+        </p>
+      )}
     </div>
   );
 }

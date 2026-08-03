@@ -8,7 +8,11 @@ import { RepositoryList } from "@components/app/RepoList";
 import { ButtonLink, Button } from "@components/ui/Button";
 import { Spinner } from "@components/ui/Spinner";
 import { cn } from "@lib/cn";
-import { readVacancyDraft } from "@lib/interview-draft";
+import {
+  clearRepositoryDraft,
+  readVacancyDraft,
+  writeRepositoryDraft,
+} from "@lib/interview-draft";
 import {
   fetchRepos,
   RepositoriesError,
@@ -16,6 +20,9 @@ import {
   type RepoSummary,
 } from "@lib/repositories-api";
 import { paths } from "@routes/paths";
+
+/** Quanto do arquivo principal segue para a etapa 3 (o resto fica no backend). */
+const EXCERPT_CHARS = 700;
 
 type Status = "loading" | "error" | "success" | "analyzing";
 
@@ -109,28 +116,48 @@ export function RepositoryChooserPage() {
     return <Navigate to={paths.newInterview} replace />;
   }
 
+  /** Saída legítima: a entrevista só perde o contexto de código. */
+  const skipRepositories = () => {
+    clearRepositoryDraft();
+    navigate(paths.interview);
+  };
+
   const startInterview = async () => {
     if (selectedIds.length === 0) {
-      navigate(paths.interview);
+      skipRepositories();
       return;
     }
 
-    const selectedRepo = repositories.find(r => r.id === selectedIds[0]);
+    const selectedRepo = repositories.find((r) => r.id === selectedIds[0]);
     if (!selectedRepo) return;
 
     setStatus("analyzing");
     setError(null);
 
     try {
-      await analyzeRepo(selectedRepo.owner, selectedRepo.name);
+      const analysis = await analyzeRepo(selectedRepo.owner, selectedRepo.name);
+      const mainFile = analysis.relevantFiles[0];
+
+      // A etapa 3 recebe só o resumo: o conteúdo completo continua no cache do
+      // backend, que é quem vai montar o prompt da entrevista.
+      writeRepositoryDraft({
+        owner: selectedRepo.owner,
+        name: selectedRepo.name,
+        language: selectedRepo.language,
+        fileCount: analysis.relevantFiles.length,
+        omittedCount: analysis.omittedFiles.length,
+        topFiles: analysis.relevantFiles.slice(0, 5).map((file) => file.path),
+        excerptPath: mainFile?.path,
+        excerpt: mainFile?.content.slice(0, EXCERPT_CHARS),
+      });
 
       navigate(paths.interview);
     } catch (cause: unknown) {
-      if (cause instanceof RepositoriesError) {
-        setError(cause);
-      } else {
-        setError(new RepositoriesError("Falha na análise do repositório."));
-      }
+      setError(
+        cause instanceof RepositoriesError
+          ? cause
+          : new RepositoriesError("Falha na análise do repositório."),
+      );
       setStatus("error");
     }
   };
@@ -227,15 +254,21 @@ export function RepositoryChooserPage() {
             ← Voltar
           </ButtonLink>
 
-          <ButtonLink
-            to={paths.interview}
+          {/* Precisa ser um Button, e não um ButtonLink: o link navegava no
+              mesmo clique que dispara a análise, então o `await` abaixo nunca
+              segurava a tela e um erro de análise não chegava a aparecer. */}
+          <Button
             variant="ember"
-            disabled={!offerSkip && !canStart}
+            disabled={status === "analyzing" || (!offerSkip && !canStart)}
             className="max-sm:w-full"
-            onClick={startInterview}
+            onClick={offerSkip ? skipRepositories : startInterview}
           >
-            {status === "analyzing" ? "Analisando..." : offerSkip ? "Seguir sem repositórios →" : "Iniciar entrevista →"}
-          </ButtonLink>
+            {status === "analyzing"
+              ? "Analisando…"
+              : offerSkip
+                ? "Seguir sem repositórios →"
+                : "Iniciar entrevista →"}
+          </Button>
         </div>
       </main>
     </div>

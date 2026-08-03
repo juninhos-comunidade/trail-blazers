@@ -155,8 +155,91 @@ export const queuedQuestions: MockMessage[] = [
 
 export const closingMessage: MockMessage = {
   from: "ai",
-  text: "É isso — entrevista concluída! Analisei suas respostas contra a vaga da Acme e seu relatório está pronto. Spoiler: você foi melhor do que imagina.",
+  text: "É isso — entrevista concluída! Analisei suas respostas contra a vaga e seu relatório está pronto. Spoiler: você foi melhor do que imagina.",
 };
+
+// ─── Personalização ─────────────────────────────────────────────────────────
+
+/**
+ * O que veio de verdade das etapas 1 e 2. As perguntas continuam fictícias,
+ * mas a conversa passa a citar a vaga e o repositório reais — sem isso a tela
+ * abria falando de uma vaga na "Acme" que a pessoa nunca digitou.
+ */
+export interface InterviewContext {
+  seniority?: string;
+  technologies: string[];
+  repositoryName?: string;
+  excerptPath?: string;
+  excerpt?: string;
+}
+
+function describeVacancy({ seniority, technologies }: InterviewContext): string {
+  const stack = technologies.slice(0, 3).join(", ");
+
+  if (seniority && stack) return `a vaga ${seniority} de ${stack}`;
+  if (stack) return `a vaga de ${stack}`;
+  if (seniority) return `a vaga ${seniority}`;
+
+  return "a vaga que você cadastrou";
+}
+
+function buildOpeningMessage(context: InterviewContext): MockMessage {
+  const source = context.repositoryName
+    ? `, com base no repositório ${context.repositoryName}`
+    : "";
+
+  return {
+    from: "ai",
+    text: `Olá! Preparei ${TOTAL_QUESTIONS} perguntas para ${describeVacancy(context)}${source}. Sem pressão: não existe resposta perfeita, e no final você recebe um diagnóstico honesto. Vamos?`,
+  };
+}
+
+/**
+ * A pergunta de análise de código usa um arquivo real do repositório quando
+ * ele existe. Sem repositório escolhido, cai no trecho fictício de sempre.
+ */
+function buildCodeQuestion(context: InterviewContext): MockMessage {
+  const { excerpt, excerptPath, repositoryName } = context;
+  if (!excerpt || !excerptPath) return CODE_QUESTION_FALLBACK;
+
+  return {
+    from: "ai",
+    kind: "code",
+    codeFile: `${repositoryName ?? "seu repositório"} · ${excerptPath}`,
+    code: excerpt,
+    text: "Encontrei este trecho no seu repositório. Me conta o que ele faz e quais decisões você tomou aqui — e o que mudaria se essa parte precisasse escalar.",
+  };
+}
+
+/** Índice da pergunta de código dentro de `seedMessages`. */
+const CODE_QUESTION_INDEX = 5;
+const CODE_QUESTION_FALLBACK = seedMessages[CODE_QUESTION_INDEX];
+
+/** Mensagens iniciais já ajustadas à vaga e ao repositório reais. */
+export function buildSeedMessages(context: InterviewContext): MockMessage[] {
+  const messages = [...seedMessages];
+
+  messages[0] = buildOpeningMessage(context);
+  messages[CODE_QUESTION_INDEX] = buildCodeQuestion(context);
+
+  return messages;
+}
+
+/**
+ * Respostas de exemplo ajustadas ao mesmo contexto. A resposta da pergunta de
+ * código é escrita para o trecho fictício; com código real na tela ela viraria
+ * um não-sequitur, então dá lugar a uma genérica.
+ */
+export function buildSampleAnswers(
+  context: InterviewContext,
+): Record<number, string> {
+  if (!context.excerpt) return sampleAnswers;
+
+  return {
+    ...sampleAnswers,
+    3: "Esse trecho concentra a regra principal do módulo. Na época priorizei entregar funcionando; hoje eu separaria a leitura de dados da regra de negócio e cobriria os casos de borda com teste antes de escalar.",
+  };
+}
 
 export const TOTAL_QUESTIONS = 8;
 /** Índice da pergunta já na tela quando a entrevista abre. */
