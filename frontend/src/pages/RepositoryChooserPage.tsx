@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate, type NavigateFunction } from "react-router-dom";
 
 import { AppHeader } from "@components/app/AppHeader";
 import { InterviewStepper } from "@components/app/InterviewStepper";
@@ -12,11 +12,12 @@ import { readVacancyDraft } from "@lib/interview-draft";
 import {
   fetchRepos,
   RepositoriesError,
+  analyzeRepo,
   type RepoSummary,
 } from "@lib/repositories-api";
 import { paths } from "@routes/paths";
 
-type Status = "loading" | "error" | "success";
+type Status = "loading" | "error" | "success" | "analyzing";
 
 /**
  * Teto de repositórios por entrevista. Hoje vale 1 por simplicidade; a tela já
@@ -54,6 +55,7 @@ export function RepositoryChooserPage() {
   const [repositories, setRepositories] = useState<RepoSummary[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [attempt, setAttempt] = useState(0);
+  const navigate: NavigateFunction = useNavigate();
 
   useEffect(() => {
     if (!vacancy) return;
@@ -106,6 +108,32 @@ export function RepositoryChooserPage() {
   if (!vacancy) {
     return <Navigate to={paths.newInterview} replace />;
   }
+
+  const startInterview = async () => {
+    if (selectedIds.length === 0) {
+      navigate(paths.interview);
+      return;
+    }
+
+    const selectedRepo = repositories.find(r => r.id === selectedIds[0]);
+    if (!selectedRepo) return;
+
+    setStatus("analyzing");
+    setError(null);
+
+    try {
+      await analyzeRepo(selectedRepo.owner, selectedRepo.name);
+
+      navigate(paths.interview);
+    } catch (cause: unknown) {
+      if (cause instanceof RepositoriesError) {
+        setError(cause);
+      } else {
+        setError(new RepositoriesError("Falha na análise do repositório."));
+      }
+      setStatus("error");
+    }
+  };
 
   return (
     <div className="min-h-screen animate-rise">
@@ -176,6 +204,13 @@ export function RepositoryChooserPage() {
           />
         )}
 
+        {status === "analyzing" && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <Spinner label="Analisando código-fonte..." />
+            <p className="text-[14.5px] text-fg-2 font-mono">Lendo arquivos e preparando a IA...</p>
+          </div>
+        )}
+
         {status === "success" && hasRepositories && (
           <RepositoryList
             repositories={repositories}
@@ -185,8 +220,10 @@ export function RepositoryChooserPage() {
           />
         )}
 
+
+
         <div className="mt-9 flex flex-wrap justify-between gap-3">
-          <ButtonLink to={paths.newInterview} variant="ghost">
+          <ButtonLink to={paths.newInterview} variant="ghost" disabled={status === "analyzing"}>
             ← Voltar
           </ButtonLink>
 
@@ -195,8 +232,9 @@ export function RepositoryChooserPage() {
             variant="ember"
             disabled={!offerSkip && !canStart}
             className="max-sm:w-full"
+            onClick={startInterview}
           >
-            {offerSkip ? "Seguir sem repositórios →" : "Iniciar entrevista →"}
+            {status === "analyzing" ? "Analisando..." : offerSkip ? "Seguir sem repositórios →" : "Iniciar entrevista →"}
           </ButtonLink>
         </div>
       </main>

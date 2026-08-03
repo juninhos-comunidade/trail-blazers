@@ -105,4 +105,26 @@ export async function fetchRepos(): Promise<RepoSummary[]> {
       'O servidor respondeu num formato que não conseguimos ler.',
     );
   }
+
+}
+
+export async function analyzeRepo(owner: string, name: string) {
+  const token = readToken();
+  const response = await fetch(`${API_URL}/repositories/${owner}/${name}/analyze`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { message?: string; code?: string } | null;
+
+    if (body?.code === 'repo_vazio') {
+      throw new RepositoriesError(body.message || 'Repositório vazio.', {
+        hint: 'Escolha outro repositório para a entrevista.',
+        retryable: false
+      });
+    }
+    throw mapErrorResponse(response.status, body);
+  }
+
+  return response.json();
 }
