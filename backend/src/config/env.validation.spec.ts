@@ -8,6 +8,7 @@ describe('envValidationSchema', () => {
     GITHUB_CALLBACK_URL: 'http://localhost:3000/auth/github/callback',
     JWT_SECRET: 'a'.repeat(32),
     ENCRYPTION_KEY: 'a'.repeat(64),
+    OPENROUTER_API_KEY: 'sk-or-v1-exemplo',
   };
 
   const validate = (env: Record<string, unknown>) =>
@@ -36,6 +37,7 @@ describe('envValidationSchema', () => {
     ['GITHUB_CALLBACK_URL', 'GITHUB_CALLBACK_URL é obrigatória'],
     ['JWT_SECRET', 'JWT_SECRET é obrigatória'],
     ['ENCRYPTION_KEY', 'ENCRYPTION_KEY é obrigatória'],
+    ['OPENROUTER_API_KEY', 'OPENROUTER_API_KEY é obrigatória'],
   ])('%s ausente', (key, mensagem) => {
     it(`reporta "${mensagem}"`, () => {
       const env = { ...validEnv };

@@ -44,6 +44,8 @@ model Vacancy {
   parsedSeniority String?  @map("parsed_seniority")
   parsedSkills    Json?    @map("parsed_skills")
   parseConfidence Float?   @map("parse_confidence")
+  // RF-2.2 edge case: a vaga nao e de tecnologia. null = parsing ainda nao rodou.
+  parsedOutOfScope Boolean? @map("parsed_out_of_scope")
   createdAt       DateTime @default(now()) @map("created_at")
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)

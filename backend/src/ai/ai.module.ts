@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { OpenRouterProvider } from './openrouter.provider';
-import { AiProviderPort, VacancyParserService } from '../job-vacancy/vacancy-parser.service';
+import { AiProviderPort, VacancyParserService } from '../vacancies/vacancy-parser.service';
 
 @Module({
   imports: [ConfigModule],

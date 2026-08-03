@@ -32,7 +32,7 @@ export const envValidationSchema = Joi.object({
   }),
   AI_MODEL: Joi.string().default('meta-llama/llama-3.1-8b-instruct:free'),
   APP_TITLE: Joi.string().default('Trail Blazers'),
-  
+
   // JWT
   JWT_SECRET: Joi.string().min(32).required().messages({
     'any.required': 'JWT_SECRET é obrigatória. Defina-a no arquivo .env',

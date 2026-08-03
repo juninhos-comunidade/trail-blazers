@@ -19,13 +19,10 @@ describe('VacancyParserService', () => {
   let ai: jest.Mocked<AiProviderPort>;
 
   beforeEach(async () => {
-    ai = { complete: jest.fn() } as jest.Mocked<AiProviderPort>;
+    ai = { complete: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        VacancyParserService,
-        { provide: AiProviderPort, useValue: ai },
-      ],
+      providers: [VacancyParserService, { provide: AiProviderPort, useValue: ai }],
     }).compile();
 
     service = module.get(VacancyParserService);
@@ -46,9 +43,7 @@ describe('VacancyParserService', () => {
 
     const result = await service.parse(TECH_VACANCY);
 
-    expect(result.technologies).toEqual(
-      expect.arrayContaining(['Node.js', 'TypeScript']),
-    );
+    expect(result.technologies).toEqual(expect.arrayContaining(['Node.js', 'TypeScript']));
     expect(result.seniorityLevel).toBe('mid');
     expect(result.confidence).toBe('high');
     expect(result.outOfScope).toBe(false);
@@ -101,7 +96,7 @@ describe('VacancyParserService', () => {
 
     expect(result.outOfScope).toBe(true);
     expect(result.confidence).toBe('low');
-    expect(ai.complete).not.toHaveBeenCalled();
+    expect(ai.complete.mock.calls).toHaveLength(0);
   });
 
   it('respeita outOfScope=true retornado pela IA', async () => {

@@ -7,13 +7,7 @@ export const VACANCY_MAX_LENGTH = 10_000;
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
-export const SeniorityLevelSchema = z.enum([
-  'junior',
-  'mid',
-  'senior',
-  'lead',
-  'unknown',
-]);
+export const SeniorityLevelSchema = z.enum(['junior', 'mid', 'senior', 'lead', 'unknown']);
 
 export const ParsingConfidenceSchema = z.enum(['high', 'low']);
 
@@ -45,35 +39,28 @@ export const AiResponseSchema = z
   .transform((data) => ({
     ...data,
     // Se a IA não identificou tecnologias, forçamos confiança baixa
-    confidence: data.technologies.length === 0 ? 'low' as const : data.confidence,
+    confidence: data.technologies.length === 0 ? ('low' as const) : data.confidence,
   }));
 
 // ─── DTO de entrada ──────────────────────────────────────────────────────────
 
-export const CreateJobVacancySchema = z.object({
+export const CreateVacancySchema = z.object({
   description: z
     .string({ required_error: 'A descrição da vaga é obrigatória.' })
-    .min(
-      VACANCY_MIN_LENGTH,
-      `A descrição deve ter ao menos ${VACANCY_MIN_LENGTH} caracteres.`,
-    )
-    .max(
-      VACANCY_MAX_LENGTH,
-      `A descrição não pode exceder ${VACANCY_MAX_LENGTH} caracteres.`,
-    )
+    .min(VACANCY_MIN_LENGTH, `A descrição deve ter ao menos ${VACANCY_MIN_LENGTH} caracteres.`)
+    .max(VACANCY_MAX_LENGTH, `A descrição não pode exceder ${VACANCY_MAX_LENGTH} caracteres.`)
     .transform((val) => val.trim()),
 });
 
-export type CreateJobVacancyDto = z.infer<typeof CreateJobVacancySchema>;
+export type CreateVacancyDto = z.infer<typeof CreateVacancySchema>;
 
 // ─── Tipo de resposta (espelho do modelo Prisma + parsedProfile tipado) ──────
 
-export interface JobVacancyResponse {
+export interface VacancyResponse {
   id: string;
   userId: string;
   description: string;
   parsedProfile: ParsedVacancyProfile | null;
   parsingCompleted: boolean;
   createdAt: Date;
-  updatedAt: Date;
 }

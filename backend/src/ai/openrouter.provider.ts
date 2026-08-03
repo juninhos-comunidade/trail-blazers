@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AiProviderPort } from '../job-vacancy/vacancy-parser.service';
+import { AiProviderPort } from '../vacancies/vacancy-parser.service';
+
+const REQUEST_TIMEOUT_MS = 20_000;
 
 @Injectable()
 export class OpenRouterProvider implements AiProviderPort {
@@ -20,6 +22,8 @@ export class OpenRouterProvider implements AiProviderPort {
   async complete(systemPrompt: string, userMessage: string): Promise<string> {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
+      // sem timeout, uma requisição pendurada deixa a vaga presa em "processando"
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         'HTTP-Referer': this.siteUrl,

@@ -1,18 +1,42 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
-import { Vacancy } from '@prisma/client';
-import type { Request } from 'express';
-import { AuthenticatedUser } from '../auth/types/authenticated-user';
-import { CreateVacancyDto } from './dto/create-vacancy.dto';
+import { Controller, Post, Get, Param, Body, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { VacanciesService } from './vacancies.service';
+import { type CreateVacancyDto, CreateVacancySchema } from './schemas/vacancy.schema';
+import { ZodValidationPipe } from './schemas/zod-validation.pipe';
+import { AuthenticatedUser } from '../auth/types/authenticated-user';
 
+// o JwtAuthGuard já está registrado como APP_GUARD em auth.module.ts
 @Controller('vacancies')
 export class VacanciesController {
-  constructor(private readonly vacanciesService: VacanciesService) {}
+  constructor(private readonly service: VacanciesService) {}
 
+  /**
+   * POST /vacancies
+   * RF-2.1 + RF-2.2: cadastra a vaga e dispara parsing.
+   */
   @Post()
-  async create(@Req() req: Request, @Body() createVacancyDto: CreateVacancyDto): Promise<Vacancy> {
-    // a vaga pertence ao usuário do JWT; o guard global garante que ele existe
-    const user = req.user as AuthenticatedUser;
-    return this.vacanciesService.create(user.id, createVacancyDto);
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @Request() req: { user: AuthenticatedUser },
+    @Body(new ZodValidationPipe(CreateVacancySchema)) dto: CreateVacancyDto,
+  ) {
+    return this.service.create(req.user.id, dto);
+  }
+
+  /**
+   * GET /vacancies/:id
+   * Polling para verificar parsingCompleted e obter parsedProfile.
+   */
+  @Get(':id')
+  async findOne(@Request() req: { user: AuthenticatedUser }, @Param('id') id: string) {
+    return this.service.findOne(id, req.user.id);
+  }
+
+  /**
+   * GET /vacancies
+   * RF-2.3 (Could): lista vagas anteriores do candidato.
+   */
+  @Get()
+  async findAll(@Request() req: { user: AuthenticatedUser }) {
+    return this.service.findAllByUser(req.user.id);
   }
 }
