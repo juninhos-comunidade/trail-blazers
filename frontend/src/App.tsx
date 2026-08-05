@@ -28,11 +28,9 @@ export default function App() {
               <Route path={paths.login} element={<LoginPage />} />
             </Route>
 
-            {/* Rotas privadas (RF-1.3). */}
             <Route element={<RequireAuth />}>
               <Route path={paths.dashboard} element={<DashboardPage />} />
 
-              {/* Fluxo da entrevista: as etapas 1 e 2 conversam com o backend. */}
               <Route path={paths.newInterview} element={<JobDescriptionPage />} />
               <Route path={paths.repoChooser} element={<RepositoryChooserPage />} />
               <Route path={paths.interview} element={<InterviewPage />} />

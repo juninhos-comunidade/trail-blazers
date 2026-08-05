@@ -8,7 +8,11 @@ import { RepositoryList } from "@components/app/RepoList";
 import { ButtonLink, Button } from "@components/ui/Button";
 import { Spinner } from "@components/ui/Spinner";
 import { cn } from "@lib/cn";
-import { readVacancyDraft } from "@lib/interview-draft";
+import {
+  clearRepositoryDraft,
+  readVacancyDraft,
+  writeRepositoryDraft,
+} from "@lib/interview-draft";
 import {
   fetchRepos,
   RepositoriesError,
@@ -17,12 +21,10 @@ import {
 } from "@lib/repositories-api";
 import { paths } from "@routes/paths";
 
+const EXCERPT_CHARS = 700;
+
 type Status = "loading" | "error" | "success" | "analyzing";
 
-/**
- * Teto de repositórios por entrevista. Hoje vale 1 por simplicidade; a tela já
- * é multisseleção, então ampliar é só mexer nesta constante.
- */
 const SELECTION_LIMIT = 1;
 
 function InfoIcon() {
@@ -47,8 +49,6 @@ function InfoIcon() {
 }
 
 export function RepositoryChooserPage() {
-  // A etapa analisa repositórios *contra uma vaga*; sem a vaga salva na etapa 1
-  // (acesso direto pela URL, ou reload em outra aba) não há o que analisar.
   const [vacancy] = useState(readVacancyDraft);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<RepositoriesError | null>(null);
@@ -102,35 +102,51 @@ export function RepositoryChooserPage() {
 
   const hasRepositories = status === "success" && repositories.length > 0;
   const canStart = hasRepositories && selectedIds.length > 0;
-  // Sem lista utilizável, seguir sem repositório é a única saída da etapa.
   const offerSkip = status === "error" || (status === "success" && !hasRepositories);
 
   if (!vacancy) {
     return <Navigate to={paths.newInterview} replace />;
   }
 
+  const skipRepositories = () => {
+    clearRepositoryDraft();
+    navigate(paths.interview);
+  };
+
   const startInterview = async () => {
     if (selectedIds.length === 0) {
-      navigate(paths.interview);
+      skipRepositories();
       return;
     }
 
-    const selectedRepo = repositories.find(r => r.id === selectedIds[0]);
+    const selectedRepo = repositories.find((r) => r.id === selectedIds[0]);
     if (!selectedRepo) return;
 
     setStatus("analyzing");
     setError(null);
 
     try {
-      await analyzeRepo(selectedRepo.owner, selectedRepo.name);
+      const analysis = await analyzeRepo(selectedRepo.owner, selectedRepo.name);
+      const mainFile = analysis.relevantFiles[0];
+
+      writeRepositoryDraft({
+        owner: selectedRepo.owner,
+        name: selectedRepo.name,
+        language: selectedRepo.language,
+        fileCount: analysis.relevantFiles.length,
+        omittedCount: analysis.omittedFiles.length,
+        topFiles: analysis.relevantFiles.slice(0, 5).map((file) => file.path),
+        excerptPath: mainFile?.path,
+        excerpt: mainFile?.content.slice(0, EXCERPT_CHARS),
+      });
 
       navigate(paths.interview);
     } catch (cause: unknown) {
-      if (cause instanceof RepositoriesError) {
-        setError(cause);
-      } else {
-        setError(new RepositoriesError("Falha na análise do repositório."));
-      }
+      setError(
+        cause instanceof RepositoriesError
+          ? cause
+          : new RepositoriesError("Falha na análise do repositório."),
+      );
       setStatus("error");
     }
   };
@@ -220,22 +236,23 @@ export function RepositoryChooserPage() {
           />
         )}
 
-
-
         <div className="mt-9 flex flex-wrap justify-between gap-3">
           <ButtonLink to={paths.newInterview} variant="ghost" disabled={status === "analyzing"}>
             ← Voltar
           </ButtonLink>
 
-          <ButtonLink
-            to={paths.interview}
+          <Button
             variant="ember"
-            disabled={!offerSkip && !canStart}
+            disabled={status === "analyzing" || (!offerSkip && !canStart)}
             className="max-sm:w-full"
-            onClick={startInterview}
+            onClick={offerSkip ? skipRepositories : startInterview}
           >
-            {status === "analyzing" ? "Analisando..." : offerSkip ? "Seguir sem repositórios →" : "Iniciar entrevista →"}
-          </ButtonLink>
+            {status === "analyzing"
+              ? "Analisando…"
+              : offerSkip
+                ? "Seguir sem repositórios →"
+                : "Iniciar entrevista →"}
+          </Button>
         </div>
       </main>
     </div>
@@ -250,11 +267,6 @@ interface FallbackPanelProps {
   action?: ReactNode;
 }
 
-/**
- * Estado sem lista para escolher — erro na busca ou conta sem repositórios.
- * Diz o que aconteceu, e a saída para seguir mesmo assim fica no rodapé da
- * etapa, junto com o "Voltar".
- */
 function FallbackPanel({
   title,
   detail,

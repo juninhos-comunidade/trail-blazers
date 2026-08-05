@@ -8,8 +8,8 @@ import { RepositoriesService } from './repos.service';
   imports: [
     UsersModule,
     CacheModule.register({
-      ttl: 300_000, // em ms: 5min
-      max: 100, // máximo de itens
+      ttl: 300_000,
+      max: 100,
     }),
   ],
   controllers: [RepositoriesController],
