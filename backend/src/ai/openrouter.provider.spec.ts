@@ -74,12 +74,19 @@ describe('OpenRouterProvider', () => {
     await expect(call()).rejects.toMatchObject({ kind: 'unavailable' });
   });
 
-  it('classifica 429 e 500 como unavailable', async () => {
-    fetchMock.mockResolvedValue(errorBody(429));
-    await expect(call()).rejects.toMatchObject({ kind: 'unavailable' });
-
+  it('classifica 500 como unavailable', async () => {
     fetchMock.mockResolvedValue(errorBody(500));
     await expect(call()).rejects.toMatchObject({ kind: 'unavailable' });
+  });
+
+  it('classifica 429 como rate_limited', async () => {
+    fetchMock.mockResolvedValue(errorBody(429));
+    await expect(call()).rejects.toMatchObject({ kind: 'rate_limited' });
+  });
+
+  it('classifica 402 como payment_required', async () => {
+    fetchMock.mockResolvedValue(errorBody(402));
+    await expect(call()).rejects.toMatchObject({ kind: 'payment_required' });
   });
 
   it('trata resposta vazia como unavailable', async () => {

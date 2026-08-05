@@ -6,7 +6,8 @@ export abstract class AiProviderPort {
 }
 
 /** O que deu errado na conversa com o provedor de IA. */
-export type AiErrorKind = 'invalid_api_key' | 'timeout' | 'unavailable';
+export type AiErrorKind =
+  'invalid_api_key' | 'timeout' | 'unavailable' | 'rate_limited' | 'payment_required';
 
 export class AiError extends Error {
   constructor(
@@ -24,12 +25,19 @@ export class AiError extends Error {
  * pobre: uma vaga vaga demais gera um perfil vazio, mas a análise deu certo.
  */
 export type ParseFailureReason =
-  'invalid_api_key' | 'timeout' | 'ai_unavailable' | 'invalid_response';
+  | 'invalid_api_key'
+  | 'timeout'
+  | 'ai_unavailable'
+  | 'invalid_response'
+  | 'rate_limited'
+  | 'payment_required';
 
 const AI_ERROR_TO_REASON: Record<AiErrorKind, ParseFailureReason> = {
   invalid_api_key: 'invalid_api_key',
   timeout: 'timeout',
   unavailable: 'ai_unavailable',
+  rate_limited: 'rate_limited',
+  payment_required: 'payment_required',
 };
 
 export class VacancyParseError extends Error {
@@ -42,57 +50,6 @@ export class VacancyParseError extends Error {
     this.name = 'VacancyParseError';
   }
 }
-
-const TECH_SCOPE_KEYWORDS = [
-  'desenvolvedor',
-  'desenvolvedora',
-  'developer',
-  'engenheiro',
-  'engenheira',
-  'engineer',
-  'software',
-  'backend',
-  'back-end',
-  'frontend',
-  'front-end',
-  'fullstack',
-  'full-stack',
-  'devops',
-  'cloud',
-  'mobile',
-  'data',
-  'machine learning',
-  'inteligência artificial',
-  'react',
-  'node',
-  'python',
-  'java',
-  'typescript',
-  'javascript',
-  'golang',
-  'rust',
-  'kubernetes',
-  'docker',
-  'aws',
-  'api',
-  'microservices',
-  'microsserviços',
-  'banco de dados',
-  'database',
-  'programação',
-  'programador',
-  'programadora',
-];
-
-const SCOPE_PATTERNS: Record<string, RegExp> = Object.fromEntries(
-  TECH_SCOPE_KEYWORDS.map((kw) => [
-    kw,
-    new RegExp(
-      `(?<![\\p{L}\\p{N}])${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`,
-      'iu',
-    ),
-  ]),
-);
 
 const PARSE_SYSTEM_PROMPT = `
 Você é um especialista em análise de vagas de tecnologia.
@@ -128,11 +85,6 @@ export class VacancyParserService {
   constructor(private readonly ai: AiProviderPort) {}
 
   async parse(description: string): Promise<ParsedVacancyProfile> {
-    if (!this.quickScopeCheck(description)) {
-      this.logger.warn('Heurística: descrição fora do escopo tech.');
-      return OUT_OF_SCOPE_PROFILE;
-    }
-
     let raw: string;
     try {
       raw = await this.ai.complete(PARSE_SYSTEM_PROMPT, description);
@@ -180,10 +132,5 @@ export class VacancyParserService {
     if (data.outOfScope) return OUT_OF_SCOPE_PROFILE;
 
     return data;
-  }
-
-  private quickScopeCheck(text: string): boolean {
-    const lower = text.toLowerCase();
-    return TECH_SCOPE_KEYWORDS.some((kw) => SCOPE_PATTERNS[kw].test(lower));
   }
 }

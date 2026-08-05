@@ -70,6 +70,22 @@ export class OpenRouterProvider implements AiProviderPort {
         );
       }
 
+      if (response.status === 429) {
+        throw new AiError(
+          'rate_limited',
+          'A OpenRouter está limitando as requisições no momento. Tente novamente em instantes.',
+          body,
+        );
+      }
+
+      if (response.status === 402) {
+        throw new AiError(
+          'payment_required',
+          'A conta da OpenRouter está sem créditos suficientes para processar a análise.',
+          body,
+        );
+      }
+
       throw new AiError('unavailable', `OpenRouter erro ${response.status}: ${body}`);
     }
 

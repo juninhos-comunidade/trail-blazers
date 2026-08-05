@@ -195,7 +195,6 @@ describe('VacanciesService', () => {
         parsedSeniority: 'mid',
         parsedSkills: ['APIs REST'],
         parseConfidence: 1.0,
-        parsedOutOfScope: false,
         parseStatus: 'done',
       }),
     );
