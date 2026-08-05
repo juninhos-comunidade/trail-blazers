@@ -338,7 +338,7 @@ function SavedCard({
       {profile?.outOfScope && (
         <p
           role="note"
-          className="mt-4 rounded-md border border-[--alpha(var(--color-ember-400)/45%)] bg-[--alpha(var(--color-ember-400)/12%)] px-3.5 py-3 text-[13.5px] leading-[1.55] text-fg-2"
+          className="mt-4 rounded-md border border-[--alpha(var(--color-info)/45%)] bg-[--alpha(var(--color-info)/12%)] px-3.5 py-3 text-[13.5px] leading-[1.55] text-fg-2"
         >
           Esta vaga não parece ser da área de tecnologia. Você pode seguir mesmo
           assim, mas as perguntas tendem a ficar genéricas.

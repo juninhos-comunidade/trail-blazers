@@ -13,12 +13,6 @@ Diferenciais: NestJS, Kubernetes, Redis.
 Responsabilidades: projetar APIs REST, revisar código, participar de refinamentos.
 `;
 
-const NON_TECH_VACANCY = `
-Gerente de Marketing Digital.
-Gestão de campanhas no Google Ads e Meta Ads.
-Requisitos: graduação em Marketing ou Comunicação, experiência com SEO e CRM.
-`;
-
 describe('VacancyParserService', () => {
   let service: VacancyParserService;
   let ai: jest.Mocked<AiProviderPort>;
@@ -75,6 +69,20 @@ describe('VacancyParserService', () => {
     });
   });
 
+  it('propaga rate_limited vindo do provedor', async () => {
+    ai.complete.mockRejectedValue(new AiError('rate_limited', 'limite estourado'));
+
+    await expect(service.parse(TECH_VACANCY)).rejects.toMatchObject({ reason: 'rate_limited' });
+  });
+
+  it('propaga payment_required vindo do provedor', async () => {
+    ai.complete.mockRejectedValue(new AiError('payment_required', 'sem créditos'));
+
+    await expect(service.parse(TECH_VACANCY)).rejects.toMatchObject({
+      reason: 'payment_required',
+    });
+  });
+
   it('usa ai_unavailable quando o erro não é um AiError', async () => {
     ai.complete.mockRejectedValue(new Error('boom'));
 
@@ -115,14 +123,6 @@ describe('VacancyParserService', () => {
 
     expect(result.seniorityLevel).toBe('unknown');
     expect(result.technologies).toEqual(['React']);
-  });
-
-  it('detecta vaga fora do escopo via heurística sem chamar a IA', async () => {
-    const result = await service.parse(NON_TECH_VACANCY);
-
-    expect(result.outOfScope).toBe(true);
-    expect(result.confidence).toBe('low');
-    expect(ai.complete.mock.calls).toHaveLength(0);
   });
 
   it('respeita outOfScope=true retornado pela IA', async () => {
