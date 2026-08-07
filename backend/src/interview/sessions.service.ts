@@ -128,6 +128,38 @@ export class SessionsService {
     });
   }
 
+  async findMany(userId: string) {
+    const sessions = await this.prisma.session.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        vacancy: true,
+        repos: true,
+        questions: true,
+        report: true,
+      },
+    });
+
+    return sessions.map((session) => ({
+      id: session.id,
+      status: session.status,
+      createdAt: session.createdAt,
+      completedAt: session.completedAt,
+      vacancy: {
+        seniorityLevel: (session.vacancy.parsedSeniority ?? 'unknown') as string,
+        technologies: (session.vacancy.parsedStack ?? []) as string[],
+      },
+      repo: session.repos[0] ? { fullName: session.repos[0].repoFullName } : null,
+      questionCount: session.questions.length,
+      report: session.report
+        ? {
+            overallScore: session.report.overallScore,
+            adherenceScore: session.report.adherenceScore,
+          }
+        : null,
+    }));
+  }
+
   async findOne(userId: string, sessionId: string) {
     const session = await this.prisma.session.findFirst({
       where: { id: sessionId, userId },
