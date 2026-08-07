@@ -10,15 +10,9 @@ export interface RepoSummary {
   visibility: "public" | "private";
 }
 
-/**
- * Falha ao listar repositórios, já traduzida para algo que a tela possa
- * mostrar: `detail` explica o que aconteceu e `hint` sugere o que fazer.
- * Sem isso a UI acabava exibindo o texto cru da resposta ("Unauthorized").
- */
 export class RepositoriesError extends Error {
   readonly detail: string;
   readonly hint?: string;
-  /** Tentar de novo só ajuda em falhas transitórias. */
   readonly retryable: boolean;
 
   constructor(detail: string, options: { hint?: string; retryable?: boolean } = {}) {
@@ -83,7 +77,6 @@ export async function fetchRepos(): Promise<RepoSummary[]> {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
   } catch {
-    // fetch só rejeita quando a requisição nem chegou a ser respondida.
     throw new RepositoriesError(
       'Não conseguimos falar com o servidor do InterviewTrail.',
       { hint: 'Verifique sua conexão e tente de novo.' },
@@ -105,4 +98,5 @@ export async function fetchRepos(): Promise<RepoSummary[]> {
       'O servidor respondeu num formato que não conseguimos ler.',
     );
   }
+
 }
