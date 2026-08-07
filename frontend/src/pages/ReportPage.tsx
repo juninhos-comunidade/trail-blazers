@@ -25,6 +25,8 @@ const RING_RADIUS = 54;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 const seniorityLabels: Record<string, string> = {
+  intern: "Estágio",
+  trainee: "Trainee",
   junior: "Júnior",
   mid: "Pleno",
   senior: "Sênior",
@@ -249,8 +251,7 @@ function Card({
 
 function AdherenceCard({ report }: { report: InterviewReport }) {
   const adherence = Math.round(report.adherenceScore);
-  const topStrength = report.strengths[0];
-  const topGap = report.gaps[0];
+  const [firstNote, secondNote] = report.adherenceNotes;
 
   return (
     <section className="rounded-xl border border-border bg-surface p-5 sm:p-6.5">
@@ -267,8 +268,8 @@ function AdherenceCard({ report }: { report: InterviewReport }) {
       </div>
 
       <div className="flex flex-col gap-3">
-        {topStrength && <Note tone="good" {...topStrength} />}
-        {topGap && <Note tone="gap" {...topGap} />}
+        {firstNote && <Note tone={adherence >= 60 ? "good" : "gap"} {...firstNote} />}
+        {secondNote && <Note tone={adherence >= 60 ? "good" : "gap"} {...secondNote} />}
       </div>
     </section>
   );

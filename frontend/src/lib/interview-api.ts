@@ -27,6 +27,7 @@ export interface InterviewReport {
   sessionId: string;
   overallScore: number;
   adherenceScore: number;
+  adherenceNotes: { title: string; text: string }[];
   dimensionScores: { label: string; score: number }[];
   strengths: { title: string; text: string }[];
   gaps: { title: string; text: string }[];

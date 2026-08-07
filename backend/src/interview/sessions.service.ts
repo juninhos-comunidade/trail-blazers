@@ -189,6 +189,7 @@ export class SessionsService {
       where: { id: sessionId, userId },
       include: {
         vacancy: true,
+        repos: true,
         questions: { orderBy: { orderIndex: 'asc' }, include: { answer: true } },
       },
     });
@@ -214,11 +215,22 @@ export class SessionsService {
       outOfScope: session.vacancy.parsedOutOfScope ?? false,
     };
 
+    const sessionRepo = session.repos[0];
+    const codeSamples = session.questions
+      .map((q) => q.metadata as { codeFile?: string; codeExcerpt?: string } | null)
+      .filter((m): m is { codeFile: string; codeExcerpt: string } => !!m?.codeFile && !!m?.codeExcerpt)
+      .map((m) => ({ file: m.codeFile, excerpt: m.codeExcerpt }));
+
     let report;
     try {
       report = await this.reportGenerator.generate({
         rawDescription: session.vacancy.rawDescription,
         profile,
+        repo: {
+          fullName: sessionRepo?.repoFullName ?? '',
+          filePaths: (sessionRepo?.selectedFilesSnapshot as string[] | null) ?? [],
+          codeSamples,
+        },
         answeredQuestions: session.questions.map((q) => ({
           type: q.type,
           content: q.content,
@@ -236,6 +248,7 @@ export class SessionsService {
           sessionId,
           overallScore: report.overallScore,
           adherenceScore: report.adherenceScore,
+          adherenceNotes: report.adherenceNotes,
           dimensionScores: report.dimensionScores,
           strengths: report.strengths,
           gaps: report.gaps,
@@ -319,6 +332,7 @@ export class SessionsService {
     report: {
       overallScore: number;
       adherenceScore: number;
+      adherenceNotes: unknown;
       dimensionScores: unknown;
       strengths: unknown;
       gaps: unknown;
@@ -331,6 +345,7 @@ export class SessionsService {
       sessionId,
       overallScore: report.overallScore,
       adherenceScore: report.adherenceScore,
+      adherenceNotes: (report.adherenceNotes ?? []) as { title: string; text: string }[],
       dimensionScores: report.dimensionScores as { label: string; score: number }[],
       strengths: report.strengths as { title: string; text: string }[],
       gaps: report.gaps as { title: string; text: string }[],
