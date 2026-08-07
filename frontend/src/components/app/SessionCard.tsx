@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import type { InterviewSessionSummary } from "@lib/interview-api";
 import { reportPath } from "@routes/paths";
 
+const MAX_TITLE_LENGTH = 80;
+
 const seniorityLabels: Record<string, string> = {
   intern: "Estágio",
   trainee: "Trainee",
@@ -17,6 +19,12 @@ function scoreColor(score: number) {
   if (score >= 75) return "var(--color-trail-text)";
   if (score >= 60) return "var(--color-ember-text)";
   return "var(--color-danger)";
+}
+
+function truncate(text: string, maxLength: number): string {
+  return text.length > maxLength
+    ? `${text.slice(0, maxLength - 1).trimEnd()}…`
+    : text;
 }
 
 function buildTitle(session: InterviewSessionSummary): string {
@@ -40,6 +48,7 @@ function buildSubtitle(session: InterviewSessionSummary): string {
 export function SessionCard({ session }: { session: InterviewSessionSummary }) {
   const score = Math.round(session.report?.overallScore ?? 0);
   const adherence = Math.round(session.report?.adherenceScore ?? 0);
+  const title = buildTitle(session);
 
   return (
     <Link
@@ -48,8 +57,11 @@ export function SessionCard({ session }: { session: InterviewSessionSummary }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-display text-[16.5px] leading-[1.3] font-semibold text-fg">
-            {buildTitle(session)}
+          <h3
+            title={title}
+            className="font-display text-[16.5px] leading-[1.3] font-semibold text-fg"
+          >
+            {truncate(title, MAX_TITLE_LENGTH)}
           </h3>
           <p className="mt-1.5 font-mono text-xs text-fg-muted">
             {buildSubtitle(session)}

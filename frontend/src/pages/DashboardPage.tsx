@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@auth/useAuth";
 import { AppHeader } from "@components/app/AppHeader";
 import { EmptyTrail } from "@components/app/EmptyTrail";
-import { SessionCard } from "@components/app/SessionCard";
+import { SessionList } from "@components/app/SessionList";
 import { ButtonLink } from "@components/ui/Button";
 import { Container } from "@components/ui/Container";
 import { PlusIcon } from "@components/ui/icons";
@@ -105,11 +105,7 @@ export function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4">
-                    {sessions.map((session) => (
-                      <SessionCard key={session.id} session={session} />
-                    ))}
-                  </div>
+                  <SessionList sessions={sessions} />
                 </>
               ) : (
                 <EmptyTrail />
