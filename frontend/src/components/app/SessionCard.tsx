@@ -53,17 +53,17 @@ export function SessionCard({ session }: { session: InterviewSessionSummary }) {
   return (
     <Link
       to={reportPath(session.id)}
-      className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-trail-600 hover:no-underline"
+      className="flex h-[172px] flex-col justify-between gap-4 rounded-lg border border-border bg-surface p-5 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-trail-600 hover:no-underline"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3
             title={title}
-            className="font-display text-[16.5px] leading-[1.3] font-semibold text-fg"
+            className="line-clamp-2 font-display text-[16.5px] leading-[1.3] font-semibold text-fg"
           >
             {truncate(title, MAX_TITLE_LENGTH)}
           </h3>
-          <p className="mt-1.5 font-mono text-xs text-fg-muted">
+          <p className="mt-1.5 truncate font-mono text-xs text-fg-muted">
             {buildSubtitle(session)}
           </p>
         </div>

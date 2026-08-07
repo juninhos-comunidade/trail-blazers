@@ -43,7 +43,10 @@ export function DashboardPage() {
     (async () => {
       try {
         const result = await listSessions();
-        if (!cancelled) setSessions(result);
+        const sorted = [...result].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        if (!cancelled) setSessions(sorted);
       } catch (cause: unknown) {
         if (!cancelled) {
           setError(
