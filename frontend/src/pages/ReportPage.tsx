@@ -25,6 +25,8 @@ const RING_RADIUS = 54;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 const seniorityLabels: Record<string, string> = {
+  intern: "Estágio",
+  trainee: "Trainee",
   junior: "Júnior",
   mid: "Pleno",
   senior: "Sênior",
