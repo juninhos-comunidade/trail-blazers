@@ -1,4 +1,5 @@
 import type { ParsedVacancyProfile } from "./vacancies-api";
+import type { InterviewSession } from "./interview-api";
 
 const VACANCY_KEY = "interviewtrail.vacancy";
 const REPOSITORY_KEY = "interviewtrail.repository";
@@ -75,6 +76,22 @@ export function writeRepositoryDraft(draft: RepositoryDraft): void {
 
 export function clearRepositoryDraft(): void {
   remove(REPOSITORY_KEY);
+}
+
+/** Reconstrói o "rascunho" de repositório a partir de uma sessão já existente no backend. */
+export function deriveRepositoryDraft(session: InterviewSession): RepositoryDraft | null {
+  if (!session.repo) return null;
+
+  const [owner, name] = session.repo.fullName.split("/");
+
+  return {
+    owner: owner ?? "",
+    name: name ?? session.repo.fullName,
+    language: session.repo.primaryLanguage,
+    fileCount: session.repoAnalysis?.fileCount ?? 0,
+    omittedCount: session.repoAnalysis?.omittedCount ?? 0,
+    topFiles: session.repoAnalysis?.topFiles ?? [],
+  };
 }
 
 export interface SessionDraft {

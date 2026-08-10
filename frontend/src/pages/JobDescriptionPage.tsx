@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import { AppHeader } from "@components/app/AppHeader";
-import { InterviewStepper } from "@components/app/InterviewStepper";
 import { Button, ButtonLink } from "@components/ui/Button";
 import { Spinner } from "@components/ui/Spinner";
 import { CheckIcon } from "@components/ui/icons";
@@ -14,10 +12,13 @@ import {
   writeVacancyDraft,
   type VacancyDraft,
 } from "@lib/interview-draft";
+import { getSession, InterviewError } from "@lib/interview-api";
 import {
   createVacancy,
   describeAnalysis,
+  getVacancy,
   reparseVacancy,
+  seniorityLabels,
   waitForVacancyParsing,
   DESCRIPTION_MAX_LENGTH,
   DESCRIPTION_MIN_LENGTH,
@@ -25,19 +26,9 @@ import {
   type AnalysisOutcome,
   type ParsedVacancyProfile,
 } from "@lib/vacancies-api";
-import { paths } from "@routes/paths";
+import { interviewPath, paths } from "@routes/paths";
 
 type Status = "idle" | "saving" | "analyzing" | "saved";
-
-const seniorityLabels: Record<ParsedVacancyProfile["seniorityLevel"], string> = {
-  intern: "Estágio",
-  trainee: "Trainee",
-  junior: "Júnior",
-  mid: "Pleno",
-  senior: "Sênior",
-  lead: "Liderança técnica",
-  unknown: "Não identificada",
-};
 
 /** Erro de rede/HTTP no meio do acompanhamento — a vaga já existe, só a análise falhou. */
 function toAnalysisProblem(cause: unknown): AnalysisOutcome {
@@ -77,6 +68,13 @@ function describeLengthProblem(text: string): string | null {
 }
 
 export function JobDescriptionPage() {
+  const { sessionId } = useParams<{ sessionId?: string }>();
+
+  if (sessionId) return <VacancyReviewView sessionId={sessionId} />;
+  return <JobDescriptionForm />;
+}
+
+function JobDescriptionForm() {
   const navigate = useNavigate();
   const [draft] = useState(readVacancyDraft);
   const [text, setText] = useState(draft?.description ?? "");
@@ -177,14 +175,9 @@ export function JobDescriptionPage() {
   };
 
   return (
-    <div className="min-h-screen animate-rise">
-      <AppHeader label="Nova entrevista" />
-
-      <main className="mx-auto w-full max-w-[760px] px-4 pt-8 pb-14 sm:px-6 sm:pt-10 sm:pb-18">
-        <InterviewStepper current={1} className="mb-12" />
-
-        <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
-          Sobre qual vaga vamos treinar?
+    <main className="mx-auto w-full max-w-[760px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+      <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
+        Sobre qual vaga vamos treinar?
         </h1>
         <p className="mb-6 text-[15px] text-fg-2">
           Cole a descrição completa — quanto mais contexto, melhor a entrevista.
@@ -302,8 +295,96 @@ export function JobDescriptionPage() {
             Continuar →
           </Button>
         </div>
-      </main>
-    </div>
+    </main>
+  );
+}
+
+/** Revisão somente-leitura da vaga preenchida numa sessão já existente. */
+function VacancyReviewView({ sessionId }: { sessionId: string }) {
+  const [profile, setProfile] = useState<ParsedVacancyProfile | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
+  const [error, setError] = useState<VacancyError | InterviewError | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const session = await getSession(sessionId);
+        const vacancy = await getVacancy(session.vacancyId);
+        if (cancelled) return;
+        setDescription(vacancy.rawDescription);
+        setProfile(vacancy.parsedProfile);
+      } catch (cause: unknown) {
+        if (cancelled) return;
+        setError(
+          cause instanceof VacancyError || cause instanceof InterviewError
+            ? cause
+            : new InterviewError("Não conseguimos carregar esta vaga."),
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  return (
+    <main className="mx-auto w-full max-w-[760px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+        <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
+          Vaga usada nesta entrevista
+        </h1>
+        <p className="mb-6 text-[15px] text-fg-2">
+          Somente leitura — é a descrição que você colou ao iniciar esta sessão.
+        </p>
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-lg border border-[--alpha(var(--color-danger)/45%)] bg-[--alpha(var(--color-danger)/8%)] px-4.5 py-4"
+          >
+            <p className="text-[14.5px] leading-[1.55] text-danger">{error.detail}</p>
+            {error.hint && (
+              <p className="mt-1 font-mono text-[11.5px] text-fg-muted">{error.hint}</p>
+            )}
+          </div>
+        )}
+
+        {!error && description === null && (
+          <div className="flex justify-center py-16">
+            <Spinner label="Carregando a vaga..." />
+          </div>
+        )}
+
+        {!error && description !== null && (
+          <>
+            <textarea
+              value={description}
+              disabled
+              aria-label="Descrição da vaga"
+              rows={10}
+              className="min-h-[220px] w-full resize-y rounded-xl border border-border bg-surface px-4.5 py-4 text-[14.5px] leading-[1.6] text-fg opacity-90 disabled:opacity-90"
+            />
+
+            {profile && !profile.outOfScope && (
+              <div className="mt-7 rounded-lg border border-border bg-surface p-5.5">
+                <VacancyProfileSummary profile={profile} />
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="mt-9 flex flex-wrap justify-between gap-3">
+          <ButtonLink to={paths.dashboard} variant="ghost">
+            ← Voltar ao dashboard
+          </ButtonLink>
+
+          <ButtonLink to={interviewPath(sessionId)} className="max-sm:w-full">
+            Ir para a entrevista →
+          </ButtonLink>
+        </div>
+    </main>
   );
 }
 
@@ -404,7 +485,7 @@ function VacancyProfileSummary({ profile }: { profile: ParsedVacancyProfile }) {
         <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
           <dt className="font-mono text-[11.5px] text-fg-muted">Senioridade</dt>
           <dd className="text-[14px] text-fg-2">
-            {seniorityLabels[profile.seniorityLevel]}
+            {seniorityLabels[profile.seniorityLevel] ?? "Não identificada"}
           </dd>
         </div>
 
