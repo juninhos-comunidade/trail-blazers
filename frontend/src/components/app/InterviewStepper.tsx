@@ -9,12 +9,25 @@ const progressByStep = ["0%", "34%", "67%", "100%"];
 
 interface InterviewStepperProps {
   current: number;
+  /**
+   * Maior passo já concluído de fato (progresso real, não a página que está
+   * sendo vista). Um passo aparece com o marcador de "concluído" sempre que
+   * `number <= maxCompletedStep`, independente de qual passo é o `current` —
+   * revisar uma etapa anterior não deve fazer as etapas seguintes perderem a
+   * marcação de concluídas.
+   */
+  maxCompletedStep: number;
   className?: string;
   /** Devolve o link para revisar aquele passo (somente leitura), ou `undefined` se ele ainda não tiver dados para mostrar. */
   getStepHref?: (step: number) => string | undefined;
 }
 
-export function InterviewStepper({ current, className, getStepHref }: InterviewStepperProps) {
+export function InterviewStepper({
+  current,
+  maxCompletedStep,
+  className,
+  getStepHref,
+}: InterviewStepperProps) {
   return (
     <ol
       aria-label={`Etapa ${current} de ${steps.length}: ${steps[current - 1]}`}
@@ -28,14 +41,14 @@ export function InterviewStepper({ current, className, getStepHref }: InterviewS
         className="absolute top-5 right-[22px] left-[22px] h-[3px] rounded-sm bg-border"
       >
         <div
-          className="absolute top-0 left-0 h-full rounded-sm bg-[linear-gradient(90deg,var(--color-trail-500),var(--color-ember-400))]"
+          className="absolute top-0 left-0 h-full rounded-sm bg-trail-500"
           style={{ width: progressByStep[current - 1] }}
         />
       </div>
 
       {steps.map((label, index) => {
         const number = index + 1;
-        const done = number < current;
+        const done = number <= maxCompletedStep && number !== current;
         const active = number === current;
         const href = active ? undefined : getStepHref?.(number);
 
@@ -46,7 +59,7 @@ export function InterviewStepper({ current, className, getStepHref }: InterviewS
               "font-mono text-[12.5px] font-semibold",
               done && "border-trail-500 bg-trail-500 text-on-trail",
               active &&
-                "border-ember-400 bg-bg text-ember-text shadow-[0_0_0_5px_--alpha(var(--color-ember-400)/15%)]",
+                "border-trail-500 bg-bg text-trail-text shadow-[0_0_0_5px_--alpha(var(--color-trail-500)/15%)]",
               !done && !active && "border-border bg-bg text-fg-muted",
               href && "transition-colors duration-200 hover:border-trail-400",
             )}

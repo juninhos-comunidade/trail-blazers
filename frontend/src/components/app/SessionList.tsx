@@ -9,9 +9,10 @@ const PAGE_SIZE = 6;
 interface SessionListProps {
   sessions: InterviewSessionSummary[];
   className?: string;
+  onSessionDeleted: (id: string) => void;
 }
 
-export function SessionList({ sessions, className }: SessionListProps) {
+export function SessionList({ sessions, className, onSessionDeleted }: SessionListProps) {
   const [page, setPage] = useState(1);
 
   const pageCount = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE));
@@ -24,7 +25,7 @@ export function SessionList({ sessions, className }: SessionListProps) {
     <div className={className}>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4">
         {visibleSessions.map((session) => (
-          <SessionCard key={session.id} session={session} />
+          <SessionCard key={session.id} session={session} onDeleted={onSessionDeleted} />
         ))}
       </div>
 

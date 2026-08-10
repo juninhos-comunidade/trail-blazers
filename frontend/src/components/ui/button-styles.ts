@@ -1,6 +1,6 @@
 import { cn } from "../../lib/cn";
 
-export type ButtonVariant = "primary" | "ember" | "secondary" | "ghost";
+export type ButtonVariant = "primary" | "ember" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
@@ -17,6 +17,9 @@ const variants: Record<ButtonVariant, string> = {
   secondary:
     "bg-transparent text-fg border border-border hover:border-trail-500 hover:text-trail-text",
   ghost: "bg-transparent text-fg-2 hover:text-fg hover:bg-surface-2",
+  danger:
+    "bg-danger text-white hover:brightness-110 hover:-translate-y-px " +
+    "hover:shadow-[0_6px_18px_--alpha(var(--color-danger)/35%)]",
 };
 
 const sizes: Record<ButtonSize, string> = {

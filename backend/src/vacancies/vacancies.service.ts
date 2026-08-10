@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { VacancyParseError, VacancyParserService } from './vacancy-parser.service';
 import {
   type CreateVacancyDto,
+  type UpdateVacancyProfileDto,
   type VacancyResponse,
   type ParsedVacancyProfile,
   type ParseStatus,
@@ -67,6 +68,48 @@ export class VacanciesService {
     void this.runParsing(id, vacancy.rawDescription);
 
     return this.toResponse(reset);
+  }
+
+  /**
+   * Ajuste manual do perfil lido pela IA — cobre casos em que a análise
+   * automática não capturou bem as nuances da vaga. Só faz sentido depois
+   * que a análise terminou; confidence/outOfScope não mudam aqui, pois quem
+   * está editando manualmente já decidiu que a leitura da IA precisa de ajuste.
+   *
+   * Uma vez que a etapa da vaga foi concluída — ou seja, já existe uma sessão
+   * de entrevista criada a partir dela —, as perguntas já foram geradas com
+   * base no perfil atual. Editar depois disso deixaria o perfil exibido
+   * dessincronizado da entrevista já em andamento, então bloqueamos aqui.
+   */
+  async updateProfile(
+    id: string,
+    userId: string,
+    dto: UpdateVacancyProfileDto,
+  ): Promise<VacancyResponse> {
+    const vacancy = await this.prisma.vacancy.findFirst({ where: { id, userId } });
+    if (!vacancy) throw new NotFoundException('Vaga não encontrada.');
+
+    if (vacancy.parseStatus !== 'done') {
+      throw new ConflictException('Esta vaga ainda não tem uma análise para editar.');
+    }
+
+    const usedInSession = await this.prisma.session.findFirst({ where: { vacancyId: id } });
+    if (usedInSession) {
+      throw new ConflictException('Esta etapa já foi concluída e não pode mais ser ajustada.');
+    }
+
+    const updated = await this.prisma.vacancy.update({
+      where: { id },
+      data: {
+        parsedStack: dto.technologies,
+        parsedSeniority: dto.seniorityLevel,
+        parsedSkills: dto.keyCompetencies,
+      },
+    });
+
+    this.logger.log(`Perfil editado manualmente [id=${id}] userId=${userId}`);
+
+    return this.toResponse(updated);
   }
 
   async findAllByUser(userId: string): Promise<VacancyResponse[]> {

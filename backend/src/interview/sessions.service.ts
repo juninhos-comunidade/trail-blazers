@@ -173,6 +173,15 @@ export class SessionsService {
     return this.toSessionResponse(session, session.repos[0] ?? null, session.questions);
   }
 
+  async remove(userId: string, sessionId: string): Promise<void> {
+    const session = await this.prisma.session.findFirst({ where: { id: sessionId, userId } });
+    if (!session) throw new NotFoundException('Sessão não encontrada.');
+
+    await this.prisma.session.delete({ where: { id: sessionId } });
+
+    this.logger.log(`Sessão apagada [id=${sessionId}] userId=${userId}`);
+  }
+
   async submitAnswer(userId: string, sessionId: string, dto: SubmitAnswerDto) {
     const session = await this.prisma.session.findFirst({
       where: { id: sessionId, userId },

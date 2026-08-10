@@ -1,6 +1,21 @@
-import { Controller, Post, Get, Param, Body, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Param,
+  Body,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { VacanciesService } from './vacancies.service';
-import { type CreateVacancyDto, CreateVacancySchema } from './schemas/vacancy.schema';
+import {
+  type CreateVacancyDto,
+  CreateVacancySchema,
+  type UpdateVacancyProfileDto,
+  UpdateVacancyProfileSchema,
+} from './schemas/vacancy.schema';
 import { ZodValidationPipe } from './schemas/zod-validation.pipe';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 
@@ -31,5 +46,14 @@ export class VacanciesController {
   @Get()
   async findAll(@Request() req: { user: AuthenticatedUser }) {
     return this.service.findAllByUser(req.user.id);
+  }
+
+  @Patch(':id/profile')
+  async updateProfile(
+    @Request() req: { user: AuthenticatedUser },
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateVacancyProfileSchema)) dto: UpdateVacancyProfileDto,
+  ) {
+    return this.service.updateProfile(id, req.user.id, dto);
   }
 }
