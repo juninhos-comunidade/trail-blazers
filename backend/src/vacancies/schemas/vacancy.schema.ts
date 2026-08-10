@@ -58,6 +58,14 @@ export const CreateVacancySchema = z.object({
 
 export type CreateVacancyDto = z.infer<typeof CreateVacancySchema>;
 
+export const UpdateVacancyProfileSchema = z.object({
+  technologies: z.array(z.string().trim().min(1)).max(15, 'No máximo 15 tecnologias.'),
+  seniorityLevel: SeniorityLevelSchema,
+  keyCompetencies: z.array(z.string().trim().min(1)).max(10, 'No máximo 10 competências-chave.'),
+});
+
+export type UpdateVacancyProfileDto = z.infer<typeof UpdateVacancyProfileSchema>;
+
 export interface VacancyResponse {
   id: string;
   userId: string;

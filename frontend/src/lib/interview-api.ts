@@ -204,6 +204,26 @@ export async function generateReport(sessionId: string): Promise<InterviewReport
   });
 }
 
+export async function deleteSession(sessionId: string): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/interview/sessions/${sessionId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+  } catch {
+    throw new InterviewError("Não conseguimos falar com o servidor do InterviewTrail.", {
+      hint: "Verifique sua conexão e tente de novo.",
+    });
+  }
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as ErrorBody;
+    throw mapErrorResponse(response.status, body);
+  }
+}
+
 export async function getReport(sessionId: string): Promise<InterviewReport | null> {
   let response: Response;
 
