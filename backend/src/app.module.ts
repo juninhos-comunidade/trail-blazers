@@ -9,6 +9,7 @@ import { RepositoriesModule } from './repos/repos.module';
 import { VacanciesModule } from './vacancies/vacancies.module';
 import { AiModule } from './ai/ai.module';
 import { InterviewModule } from './interview/interview.module';
+import { TtsModule } from './tts/tts.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { InterviewModule } from './interview/interview.module';
     VacanciesModule,
     AiModule,
     InterviewModule,
+    TtsModule,
   ],
   controllers: [],
   providers: [],
