@@ -4,6 +4,7 @@ import { Navigate, useParams } from "react-router-dom";
 
 import { Button, ButtonLink } from "@components/ui/Button";
 import { LogoMark } from "@components/ui/Logo";
+import { MicIcon, ReplayIcon, SpeakerIcon, SpeakerMuteIcon } from "@components/ui/icons";
 import { Spinner } from "@components/ui/Spinner";
 import { cn } from "@lib/cn";
 import { readSessionDraft, readVacancyDraft, type VacancyDraft } from "@lib/interview-draft";
@@ -14,6 +15,13 @@ import {
   type InterviewQuestion,
   type InterviewSession,
 } from "@lib/interview-api";
+import {
+  createRecognizer,
+  isSpeechRecognitionSupported,
+  speak,
+  stopSpeaking,
+} from "@lib/speech";
+import { useTtsPreference } from "@lib/tts-preference";
 import { questionKinds } from "@components/interview/question-kinds";
 import { paths, reportPath } from "@routes/paths";
 
@@ -38,7 +46,15 @@ export function InterviewPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<InterviewError | null>(null);
 
+  const [ttsEnabled, setTtsEnabled] = useTtsPreference();
+  const [recording, setRecording] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const micSupported = useMemo(() => isSpeechRecognitionSupported(), []);
+
   const chatRef = useRef<HTMLDivElement>(null);
+  const lastSpokenIdRef = useRef<string | null>(null);
+  const recognizerRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const draftAtRecordStartRef = useRef("");
 
   useEffect(() => {
     if (!sessionDraft) return;
@@ -90,6 +106,62 @@ export function InterviewPage() {
     const element = chatRef.current;
     if (element) element.scrollTop = element.scrollHeight;
   }, [entries, submitting]);
+
+  useEffect(() => {
+    if (!ttsEnabled || !currentQuestion) return;
+    if (lastSpokenIdRef.current === currentQuestion.id) return;
+
+    lastSpokenIdRef.current = currentQuestion.id;
+    void speak(currentQuestion.content);
+  }, [ttsEnabled, currentQuestion]);
+
+  useEffect(() => {
+    return () => stopSpeaking();
+  }, []);
+
+  const toggleTts = () => {
+    const next = !ttsEnabled;
+    setTtsEnabled(next);
+    if (!next) stopSpeaking();
+  };
+
+  const repeatQuestion = () => {
+    if (!currentQuestion) return;
+    void speak(currentQuestion.content);
+  };
+
+  const toggleRecording = () => {
+    if (recording) {
+      recognizerRef.current?.stop();
+      return;
+    }
+
+    setMicError(null);
+    stopSpeaking();
+    draftAtRecordStartRef.current = draft;
+
+    const recognizer = createRecognizer({
+      onResult: (text, isFinal) => {
+        if (!isFinal) return;
+        const base = draftAtRecordStartRef.current;
+        setDraft(base ? `${base} ${text}` : text);
+        draftAtRecordStartRef.current = base ? `${base} ${text}` : text;
+      },
+      onEnd: () => setRecording(false),
+      onError: (reason) => {
+        setRecording(false);
+        setMicError(
+          reason === "not-allowed" || reason === "permission-denied"
+            ? "Permissão de microfone negada."
+            : "Não conseguimos reconhecer sua fala. Tente novamente.",
+        );
+      },
+    });
+
+    recognizerRef.current = recognizer;
+    setRecording(true);
+    recognizer.start();
+  };
 
   const send = async () => {
     const answer = draft.trim();
@@ -157,7 +229,13 @@ export function InterviewPage() {
           <div ref={chatRef} className="flex-1 overflow-y-auto px-4 py-6 sm:px-5 sm:py-7">
             <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5">
               {entries.map((entry, index) => (
-                <ChatMessage key={index} entry={entry} />
+                <ChatMessage
+                  key={index}
+                  entry={entry}
+                  isCurrentQuestion={Boolean(currentQuestion) && entry.question?.id === currentQuestion?.id}
+                  ttsEnabled={ttsEnabled}
+                  onRepeat={repeatQuestion}
+                />
               ))}
               {submitting && <TypingBubble />}
             </div>
@@ -183,7 +261,28 @@ export function InterviewPage() {
                     </p>
                   )}
 
+                  {micError && <p className="mb-2.5 text-[13px] text-danger">{micError}</p>}
+
                   <div className="flex items-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={toggleTts}
+                      aria-pressed={ttsEnabled}
+                      aria-label={
+                        ttsEnabled
+                          ? "Desativar leitura das perguntas em voz alta"
+                          : "Ativar leitura das perguntas em voz alta"
+                      }
+                      title={ttsEnabled ? "Leitura em voz alta ativada" : "Leitura em voz alta desativada"}
+                      className={cn(
+                        "flex size-12 flex-none items-center justify-center rounded-[12px] border transition-colors duration-200",
+                        ttsEnabled
+                          ? "border-trail-500 bg-[--alpha(var(--color-trail-500)/13%)] text-trail-text"
+                          : "border-border bg-surface text-fg-2 hover:text-fg",
+                      )}
+                    >
+                      {ttsEnabled ? <SpeakerIcon size={17} /> : <SpeakerMuteIcon size={17} />}
+                    </button>
                     <textarea
                       value={draft}
                       onChange={(event) => setDraft(event.target.value)}
@@ -194,6 +293,27 @@ export function InterviewPage() {
                       disabled={submitting}
                       className="min-w-0 flex-1 resize-none rounded-xl border border-border bg-surface px-4 py-3.5 text-[15px] leading-[1.5] text-fg transition-[border-color,box-shadow] duration-200 focus:border-trail-500 focus:shadow-[0_0_0_3px_--alpha(var(--color-trail-500)/20%)] focus:outline-none"
                     />
+                    <button
+                      type="button"
+                      onClick={toggleRecording}
+                      disabled={!micSupported || submitting}
+                      aria-label={recording ? "Parar gravação" : "Responder por voz"}
+                      title={
+                        micSupported
+                          ? recording
+                            ? "Parar gravação"
+                            : "Responder por voz"
+                          : "Reconhecimento de voz não é suportado neste navegador."
+                      }
+                      className={cn(
+                        "flex size-12 flex-none items-center justify-center rounded-[12px] border transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45",
+                        recording
+                          ? "animate-pulse border-danger bg-[--alpha(var(--color-danger)/13%)] text-danger"
+                          : "border-border bg-surface text-fg-2 hover:text-fg",
+                      )}
+                    >
+                      <MicIcon size={18} />
+                    </button>
                     <Button
                       onClick={() => void send()}
                       disabled={!draft.trim() || submitting}
@@ -236,7 +356,17 @@ function InterviewerAvatar() {
   );
 }
 
-function ChatMessage({ entry }: { entry: ChatEntry }) {
+function ChatMessage({
+  entry,
+  isCurrentQuestion,
+  ttsEnabled,
+  onRepeat,
+}: {
+  entry: ChatEntry;
+  isCurrentQuestion: boolean;
+  ttsEnabled: boolean;
+  onRepeat: () => void;
+}) {
   if (entry.from === "user") {
     return (
       <div className="flex animate-rise justify-end">
@@ -280,6 +410,18 @@ function ChatMessage({ entry }: { entry: ChatEntry }) {
         <p className="rounded-[4px_14px_14px_14px] border border-border bg-surface px-4 py-3.5 text-[15px] leading-[1.6]">
           {entry.text}
         </p>
+
+        {isCurrentQuestion && ttsEnabled && (
+          <button
+            type="button"
+            onClick={onRepeat}
+            aria-label="Repetir a pergunta em voz alta"
+            className="flex self-start items-center gap-1.5 rounded-full px-1 py-0.5 font-mono text-[11px] text-fg-muted transition-colors duration-200 hover:text-trail-text"
+          >
+            <ReplayIcon size={11} />
+            repetir
+          </button>
+        )}
       </div>
     </div>
   );
