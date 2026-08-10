@@ -28,6 +28,20 @@ export interface Vacancy {
   createdAt: string;
 }
 
+/**
+ * Sem entrada para "unknown" de propósito: cada tela decide como tratar
+ * senioridade não identificada (omitir, mostrar "—", etc.), então o fallback
+ * fica no chamador, não aqui.
+ */
+export const seniorityLabels: Partial<Record<ParsedVacancyProfile["seniorityLevel"], string>> = {
+  intern: "Estágio",
+  trainee: "Trainee",
+  junior: "Júnior",
+  mid: "Pleno",
+  senior: "Sênior",
+  lead: "Liderança técnica",
+};
+
 export class VacancyError extends Error {
   readonly detail: string;
   readonly hint?: string;

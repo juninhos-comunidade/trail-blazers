@@ -2,11 +2,11 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 
-import { InterviewStepper } from "@components/app/InterviewStepper";
 import { ButtonLink } from "@components/ui/Button";
 import { CheckIcon } from "@components/ui/icons";
 import { Spinner } from "@components/ui/Spinner";
 import {
+  deriveRepositoryDraft,
   readRepositoryDraft,
   readSessionDraft,
   readVacancyDraft,
@@ -20,20 +20,11 @@ import {
   InterviewError,
   type InterviewReport,
 } from "@lib/interview-api";
-import { getVacancy, VacancyError } from "@lib/vacancies-api";
-import { paths } from "@routes/paths";
+import { getVacancy, seniorityLabels, VacancyError } from "@lib/vacancies-api";
+import { interviewPath, paths } from "@routes/paths";
 
 const RING_RADIUS = 54;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
-
-const seniorityLabels: Record<string, string> = {
-  intern: "Estágio",
-  trainee: "Trainee",
-  junior: "Júnior",
-  mid: "Pleno",
-  senior: "Sênior",
-  lead: "Liderança técnica",
-};
 
 function buildEyebrow(vacancy: VacancyDraft | null, repository: RepositoryDraft | null): string {
   const profile = vacancy?.profile ?? null;
@@ -108,28 +99,19 @@ export function ReportPage() {
             description: vacancyData.rawDescription,
             profile: vacancyData.parsedProfile,
           });
+          setRepository(deriveRepositoryDraft(session));
 
-          setRepository(
-            session.repo
-              ? {
-                  owner: session.repo.fullName.split("/")[0] ?? "",
-                  name: session.repo.fullName.split("/")[1] ?? session.repo.fullName,
-                  language: session.repo.primaryLanguage,
-                  fileCount: session.repoAnalysis?.fileCount ?? 0,
-                  omittedCount: session.repoAnalysis?.omittedCount ?? 0,
-                  topFiles: session.repoAnalysis?.topFiles ?? [],
-                }
-              : null,
-          );
-
-          const existing = await getReport(historicalId);
-          if (!existing) {
-            throw new InterviewError("Esta entrevista ainda não tem relatório gerado.", {
-              hint: "Volte quando a entrevista estiver concluída.",
+          if (session.status === "in_progress") {
+            throw new InterviewError("Esta entrevista ainda tem perguntas sem resposta.", {
+              hint: "Volte para a conversa e responda todas as perguntas antes de ver o relatório.",
               retryable: false,
+              code: "respostas_pendentes",
             });
           }
-          setReport(existing);
+
+          const existing = await getReport(historicalId);
+          const result = existing ?? (await generateReport(historicalId));
+          setReport(result);
           return;
         }
 
@@ -154,15 +136,12 @@ export function ReportPage() {
     return <Navigate to={paths.newInterview} replace />;
   }
 
-  if (!historicalId && error?.code === "respostas_pendentes") {
-    return <Navigate to={paths.interview} replace />;
+  if (error?.code === "respostas_pendentes") {
+    return <Navigate to={interviewPath(historicalId)} replace />;
   }
 
   return (
-    <div className="min-h-screen animate-rise">
-      <main className="mx-auto w-full max-w-[920px] px-4 pt-8 pb-14 sm:px-6 sm:pt-10 sm:pb-18">
-        <InterviewStepper current={4} className="mb-10 sm:mb-12" />
-
+    <main className="mx-auto w-full max-w-[920px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
         {error && (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[--alpha(var(--color-danger)/45%)] bg-[--alpha(var(--color-danger)/8%)] px-5 py-12 text-center">
             <p className="text-[15px] text-fg-2">{error.detail}</p>
@@ -225,8 +204,7 @@ export function ReportPage() {
             </p>
           </>
         )}
-      </main>
-    </div>
+    </main>
   );
 }
 

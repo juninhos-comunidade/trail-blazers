@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 
 import { Button, ButtonLink } from "@components/ui/Button";
-import { Logo, LogoMark } from "@components/ui/Logo";
+import { LogoMark } from "@components/ui/Logo";
 import { Spinner } from "@components/ui/Spinner";
 import { cn } from "@lib/cn";
-import { readSessionDraft, readVacancyDraft } from "@lib/interview-draft";
+import { readSessionDraft, readVacancyDraft, type VacancyDraft } from "@lib/interview-draft";
 import {
   getSession,
   submitAnswer,
@@ -15,7 +15,7 @@ import {
   type InterviewSession,
 } from "@lib/interview-api";
 import { questionKinds } from "@components/interview/question-kinds";
-import { paths } from "@routes/paths";
+import { paths, reportPath } from "@routes/paths";
 
 interface ChatEntry {
   from: "ai" | "user";
@@ -27,10 +27,10 @@ const CLOSING_TEXT =
   "É isso — entrevista concluída! Analisei suas respostas contra a vaga e seu relatório está pronto. Spoiler: você foi melhor do que imagina.";
 
 export function InterviewPage() {
-  const navigate = useNavigate();
+  const { sessionId: historicalId } = useParams<{ sessionId?: string }>();
 
-  const [sessionDraft] = useState(readSessionDraft);
-  const [vacancy] = useState(readVacancyDraft);
+  const [sessionDraft] = useState(() => (historicalId ? { id: historicalId } : readSessionDraft()));
+  const [vacancy] = useState<VacancyDraft | null>(historicalId ? null : readVacancyDraft());
 
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [loadError, setLoadError] = useState<InterviewError | null>(null);
@@ -66,7 +66,6 @@ export function InterviewPage() {
   const currentIndex = questions.findIndex((q) => !q.answer);
   const finished = questions.length > 0 && currentIndex === -1;
   const currentQuestion = finished ? undefined : questions[currentIndex];
-  const totalQuestions = questions.length;
 
   const entries = useMemo<ChatEntry[]>(() => {
     const result: ChatEntry[] = [];
@@ -131,42 +130,17 @@ export function InterviewPage() {
     }
   };
 
-  if (!vacancy || !sessionDraft) {
+  if (!historicalId && (!vacancy || !sessionDraft)) {
     return <Navigate to={paths.newInterview} replace />;
   }
 
   return (
-    <div className="flex h-dvh flex-col">
-      <header className="flex-none border-b border-border bg-bg">
-        <div className="mx-auto flex w-full max-w-[1100px] items-center justify-between gap-2 px-4 py-3 sm:gap-4 sm:px-5">
-          <Link to={paths.dashboard} className="hover:no-underline">
-            <Logo markSize={22} className="text-[17px] text-fg max-sm:sr-only" />
-          </Link>
-
-          <div className="flex items-center gap-2.5">
-            <span className="rounded-full border border-border bg-surface px-3 py-1.5 font-mono text-xs text-fg-2">
-              {finished
-                ? "Entrevista concluída"
-                : totalQuestions > 0
-                  ? `Pergunta ${currentIndex + 1} de ${totalQuestions}`
-                  : "Preparando..."}
-            </span>
-            <button
-              type="button"
-              onClick={() => navigate(paths.dashboard)}
-              className="rounded-md px-3 py-2 text-sm font-medium text-fg-2 transition-colors duration-200 hover:bg-surface-2 hover:text-fg"
-            >
-              Sair
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <div className="flex h-full flex-col">
       {loadError && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
           <p className="text-[15px] text-fg-2">{loadError.detail}</p>
           {loadError.hint && <p className="font-mono text-[12.5px] text-fg-muted">{loadError.hint}</p>}
-          <ButtonLink to={paths.repoChooser} variant="secondary">
+          <ButtonLink to={historicalId ? paths.dashboard : paths.repoChooser} variant="secondary">
             Voltar
           </ButtonLink>
         </div>
@@ -193,7 +167,7 @@ export function InterviewPage() {
             <div className="mx-auto w-full max-w-[760px]">
               {finished ? (
                 <div className="flex flex-wrap justify-center gap-3 py-1.5">
-                  <ButtonLink to={paths.report} variant="ember" size="lg" className="max-sm:w-full">
+                  <ButtonLink to={reportPath(session.id)} variant="ember" size="lg" className="max-sm:w-full">
                     Ver meu relatório →
                   </ButtonLink>
                   <ButtonLink to={paths.dashboard} variant="secondary" size="lg" className="max-sm:w-full">
