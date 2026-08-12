@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -63,5 +64,11 @@ export class InterviewController {
     const report = await this.sessions.getReport(req.user.id, id);
     if (!report) throw new NotFoundException('Relatório ainda não gerado para esta sessão.');
     return report;
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Request() req: { user: AuthenticatedUser }, @Param('id') id: string) {
+    await this.sessions.remove(req.user.id, id);
   }
 }

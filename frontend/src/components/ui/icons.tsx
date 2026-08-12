@@ -112,6 +112,93 @@ export function GlobeIcon({ size = 12, ...props }: IconProps & { size?: number }
   );
 }
 
+export function TrashIcon({ size = 14, ...props }: IconProps & { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M3 4.5h10M6.5 4.5V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M6 7.2v4.3M10 7.2v4.3"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 4.5 4.6 13a1.5 1.5 0 0 0 1.5 1.4h3.8a1.5 1.5 0 0 0 1.5-1.4l.6-8.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function MicIcon({ size = 16, ...props }: IconProps & { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M3 7.5v.5a5 5 0 0 0 10 0v-.5M8 13v1.5M5.7 14.5h4.6"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function SpeakerIcon({ size = 16, ...props }: IconProps & { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M2 6.2h2.4L8 3v10L4.4 9.8H2z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.8 5.3a3.6 3.6 0 0 1 0 5.4M12.8 3.4a6.6 6.6 0 0 1 0 9.2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function SpeakerMuteIcon({ size = 16, ...props }: IconProps & { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M2 6.2h2.4L8 3v10L4.4 9.8H2z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M11 6l3.5 4M14.5 6 11 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ReplayIcon({ size = 15, ...props }: IconProps & { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M13.5 8A5.5 5.5 0 1 1 11.7 4"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M11.7 1.3v3.2H8.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function CommitIcon({ size = 13, ...props }: IconProps & { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>

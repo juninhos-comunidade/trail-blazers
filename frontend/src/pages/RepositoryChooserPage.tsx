@@ -1,26 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Navigate, useNavigate, type NavigateFunction } from "react-router-dom";
+import { Navigate, useNavigate, useParams, type NavigateFunction } from "react-router-dom";
 
-import { AppHeader } from "@components/app/AppHeader";
-import { InterviewStepper } from "@components/app/InterviewStepper";
 import { RepositoryList } from "@components/app/RepoList";
 import { ButtonLink, Button } from "@components/ui/Button";
 import { Spinner } from "@components/ui/Spinner";
 import { cn } from "@lib/cn";
 import {
   clearRepositoryDraft,
+  deriveRepositoryDraft,
   readVacancyDraft,
   writeRepositoryDraft,
   writeSessionDraft,
+  type RepositoryDraft,
 } from "@lib/interview-draft";
 import { fetchRepos, RepositoriesError, type RepoSummary } from "@lib/repositories-api";
-import { createSession, InterviewError } from "@lib/interview-api";
-import { paths } from "@routes/paths";
+import { createSession, getSession, InterviewError } from "@lib/interview-api";
+import { interviewPath, paths } from "@routes/paths";
 
 type Status = "loading" | "error" | "success" | "analyzing";
 
 const SELECTION_LIMIT = 1;
+
+export function RepositoryChooserPage() {
+  const { sessionId } = useParams<{ sessionId?: string }>();
+
+  if (sessionId) return <RepositoryReviewView sessionId={sessionId} />;
+  return <RepositoryChooserForm />;
+}
 
 function InfoIcon() {
   return (
@@ -43,7 +50,7 @@ function InfoIcon() {
   );
 }
 
-export function RepositoryChooserPage() {
+function RepositoryChooserForm() {
   const [vacancy] = useState(readVacancyDraft);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<RepositoriesError | InterviewError | null>(null);
@@ -149,12 +156,7 @@ export function RepositoryChooserPage() {
   };
 
   return (
-    <div className="min-h-screen animate-rise">
-      <AppHeader label="Nova entrevista" />
-
-      <main className="mx-auto w-full max-w-[860px] px-4 pt-8 pb-14 sm:px-6 sm:pt-10 sm:pb-18">
-        <InterviewStepper current={2} className="mb-12" />
-
+    <main className="mx-auto w-full max-w-[860px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
         <div className="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-end">
           <div>
             <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
@@ -253,8 +255,103 @@ export function RepositoryChooserPage() {
                 : "Iniciar entrevista →"}
           </Button>
         </div>
-      </main>
-    </div>
+    </main>
+  );
+}
+
+/** Revisão somente-leitura do repositório escolhido numa sessão já existente. */
+function RepositoryReviewView({ sessionId }: { sessionId: string }) {
+  const [repository, setRepository] = useState<RepositoryDraft | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<InterviewError | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getSession(sessionId)
+      .then((session) => {
+        if (cancelled) return;
+        setRepository(deriveRepositoryDraft(session));
+        setLoaded(true);
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) return;
+        setError(
+          cause instanceof InterviewError
+            ? cause
+            : new InterviewError("Não conseguimos carregar esta entrevista."),
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  return (
+    <main className="mx-auto w-full max-w-[860px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+        <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
+          Repositório usado nesta entrevista
+        </h1>
+        <p className="mb-6 text-[15px] text-fg-2">
+          Somente leitura — é o repositório escolhido ao iniciar esta sessão.
+        </p>
+
+        {error && (
+          <FallbackPanel
+            tone="danger"
+            title="Não conseguimos carregar esta entrevista"
+            detail={error.detail}
+            hint={error.hint}
+          />
+        )}
+
+        {!error && !loaded && (
+          <div className="flex justify-center py-16">
+            <Spinner label="Carregando repositório..." />
+          </div>
+        )}
+
+        {!error && loaded && !repository && (
+          <FallbackPanel
+            title="Esta entrevista seguiu sem repositório"
+            detail="Nenhum repositório do GitHub foi analisado nesta sessão."
+          />
+        )}
+
+        {!error && loaded && repository && (
+          <div className="flex flex-col gap-3.5 rounded-lg border border-border bg-surface p-[18px]">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[14.5px] font-semibold">
+                {repository.owner}/{repository.name}
+              </span>
+              <span className="flex-none rounded-full border border-border bg-surface-2 px-2.5 py-0.5 font-mono text-[11px] text-fg-muted">
+                {repository.language ?? "Sem linguagem"}
+              </span>
+            </div>
+
+            {repository.topFiles.length > 0 && (
+              <ul className="mt-1 flex flex-col gap-1">
+                {repository.topFiles.map((file) => (
+                  <li key={file} className="truncate font-mono text-[12px] text-fg-2">
+                    {file}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        <div className="mt-9 flex flex-wrap justify-between gap-3">
+          <ButtonLink to={paths.dashboard} variant="ghost">
+            ← Voltar ao dashboard
+          </ButtonLink>
+
+          <ButtonLink to={interviewPath(sessionId)} className="max-sm:w-full">
+            Ir para a entrevista →
+          </ButtonLink>
+        </div>
+    </main>
   );
 }
 

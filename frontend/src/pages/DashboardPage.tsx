@@ -108,7 +108,14 @@ export function DashboardPage() {
                     </p>
                   </div>
 
-                  <SessionList sessions={sessions} />
+                  <SessionList
+                    sessions={sessions}
+                    onSessionDeleted={(id) =>
+                      setSessions((current) =>
+                        current ? current.filter((session) => session.id !== id) : current,
+                      )
+                    }
+                  />
                 </>
               ) : (
                 <EmptyTrail />

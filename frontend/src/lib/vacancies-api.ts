@@ -28,6 +28,31 @@ export interface Vacancy {
   createdAt: string;
 }
 
+/**
+ * Sem entrada para "unknown" de propósito: cada tela decide como tratar
+ * senioridade não identificada (omitir, mostrar "—", etc.), então o fallback
+ * fica no chamador, não aqui.
+ */
+export const seniorityLabels: Partial<Record<ParsedVacancyProfile["seniorityLevel"], string>> = {
+  intern: "Estágio",
+  trainee: "Trainee",
+  junior: "Júnior",
+  mid: "Pleno",
+  senior: "Sênior",
+  lead: "Liderança técnica",
+};
+
+/** Todas as opções válidas de senioridade, na ordem que fazem sentido num select. */
+export const seniorityLevels: ParsedVacancyProfile["seniorityLevel"][] = [
+  "intern",
+  "trainee",
+  "junior",
+  "mid",
+  "senior",
+  "lead",
+  "unknown",
+];
+
 export class VacancyError extends Error {
   readonly detail: string;
   readonly hint?: string;
@@ -49,7 +74,7 @@ type ErrorBody = { message?: string | string[] } | null;
  * o acompanhamento da análise a vaga já foi salva, então dizer "não conseguimos
  * salvar" seria mentira.
  */
-type ErrorContext = "save" | "analysis";
+type ErrorContext = "save" | "analysis" | "profile";
 
 function firstMessage(body: ErrorBody): string | undefined {
   if (Array.isArray(body?.message)) return body.message[0];
@@ -62,11 +87,15 @@ function mapErrorResponse(
   context: ErrorContext,
 ): VacancyError {
   const saving = context === "save";
+  const editingProfile = context === "profile";
 
   if (status === 400) {
     return new VacancyError(
-      firstMessage(body) ?? "A descrição da vaga não foi aceita.",
-      { hint: "Ajuste o texto e tente de novo.", retryable: false },
+      firstMessage(body) ??
+        (editingProfile
+          ? "As alterações não foram aceitas."
+          : "A descrição da vaga não foi aceita."),
+      { hint: "Ajuste e tente de novo.", retryable: false },
     );
   }
 
@@ -84,12 +113,21 @@ function mapErrorResponse(
     });
   }
 
+  if (status === 409 && editingProfile) {
+    return new VacancyError(
+      firstMessage(body) ?? "Esta vaga não pode mais ser ajustada.",
+      { hint: "A etapa da vaga já foi concluída.", retryable: false },
+    );
+  }
+
   if (status >= 500) {
     return new VacancyError(
       firstMessage(body) ??
         (saving
           ? "O servidor não conseguiu salvar a vaga."
-          : "O servidor não conseguiu responder sobre a análise."),
+          : editingProfile
+            ? "O servidor não conseguiu salvar as alterações."
+            : "O servidor não conseguiu responder sobre a análise."),
       { hint: "Costuma ser temporário." },
     );
   }
@@ -98,7 +136,9 @@ function mapErrorResponse(
     firstMessage(body) ??
       (saving
         ? `Não conseguimos salvar a vaga (código ${status}).`
-        : `Não conseguimos acompanhar a análise (código ${status}).`),
+        : editingProfile
+          ? `Não conseguimos salvar as alterações (código ${status}).`
+          : `Não conseguimos acompanhar a análise (código ${status}).`),
   );
 }
 
@@ -311,6 +351,55 @@ export async function reparseVacancy(id: string): Promise<Vacancy> {
       response.status,
       (await response.json().catch(() => null)) as ErrorBody,
       "analysis",
+    );
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    throw new VacancyError(
+      "O servidor respondeu num formato que não conseguimos ler.",
+    );
+  }
+
+  return ensureVacancy(payload);
+}
+
+/**
+ * Ajuste manual do perfil lido pela IA — para os casos em que a leitura
+ * automática não capturou bem as tecnologias/competências/senioridade da vaga.
+ */
+export async function updateVacancyProfile(
+  id: string,
+  patch: Pick<ParsedVacancyProfile, "technologies" | "seniorityLevel" | "keyCompetencies">,
+): Promise<Vacancy> {
+  const token = readToken();
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/vacancies/${id}/profile`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(patch),
+    });
+  } catch {
+    throw new VacancyError(
+      "Não conseguimos falar com o servidor do InterviewTrail.",
+      { hint: "Verifique sua conexão e tente de novo." },
+    );
+  }
+
+  if (!response.ok) {
+    throw mapErrorResponse(
+      response.status,
+      (await response.json().catch(() => null)) as ErrorBody,
+      "profile",
     );
   }
 

@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import { AppHeader } from "@components/app/AppHeader";
-import { InterviewStepper } from "@components/app/InterviewStepper";
 import { Button, ButtonLink } from "@components/ui/Button";
 import { Spinner } from "@components/ui/Spinner";
 import { CheckIcon } from "@components/ui/icons";
@@ -10,14 +8,20 @@ import { sampleVacancy } from "@content/sample-vacancy";
 import { cn } from "@lib/cn";
 import {
   clearVacancyDraft,
+  readSessionDraft,
   readVacancyDraft,
   writeVacancyDraft,
   type VacancyDraft,
 } from "@lib/interview-draft";
+import { getSession, InterviewError } from "@lib/interview-api";
 import {
   createVacancy,
   describeAnalysis,
+  getVacancy,
   reparseVacancy,
+  seniorityLabels,
+  seniorityLevels,
+  updateVacancyProfile,
   waitForVacancyParsing,
   DESCRIPTION_MAX_LENGTH,
   DESCRIPTION_MIN_LENGTH,
@@ -25,19 +29,9 @@ import {
   type AnalysisOutcome,
   type ParsedVacancyProfile,
 } from "@lib/vacancies-api";
-import { paths } from "@routes/paths";
+import { interviewPath, paths } from "@routes/paths";
 
 type Status = "idle" | "saving" | "analyzing" | "saved";
-
-const seniorityLabels: Record<ParsedVacancyProfile["seniorityLevel"], string> = {
-  intern: "Estágio",
-  trainee: "Trainee",
-  junior: "Júnior",
-  mid: "Pleno",
-  senior: "Sênior",
-  lead: "Liderança técnica",
-  unknown: "Não identificada",
-};
 
 /** Erro de rede/HTTP no meio do acompanhamento — a vaga já existe, só a análise falhou. */
 function toAnalysisProblem(cause: unknown): AnalysisOutcome {
@@ -77,6 +71,13 @@ function describeLengthProblem(text: string): string | null {
 }
 
 export function JobDescriptionPage() {
+  const { sessionId } = useParams<{ sessionId?: string }>();
+
+  if (sessionId) return <VacancyReviewView sessionId={sessionId} />;
+  return <JobDescriptionForm />;
+}
+
+function JobDescriptionForm() {
   const navigate = useNavigate();
   const [draft] = useState(readVacancyDraft);
   const [text, setText] = useState(draft?.description ?? "");
@@ -84,6 +85,14 @@ export function JobDescriptionPage() {
   const [status, setStatus] = useState<Status>(draft ? "saved" : "idle");
   const [error, setError] = useState<VacancyError | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisOutcome | null>(null);
+  /**
+   * Se já existe uma sessão criada a partir desta vaga, a etapa está
+   * concluída: as perguntas já foram geradas com o perfil atual, então o
+   * perfil não pode mais ser ajustado (ficaria dessincronizado da entrevista).
+   * `onChange` limpa junto o rascunho de sessão sempre que o texto muda, então
+   * este valor só fica "true" enquanto `saved` continuar sendo a mesma vaga.
+   */
+  const [stepConcluded] = useState(() => readSessionDraft() !== null);
 
   const polling = useRef<AbortController | null>(null);
   useEffect(() => () => polling.current?.abort(), []);
@@ -177,14 +186,9 @@ export function JobDescriptionPage() {
   };
 
   return (
-    <div className="min-h-screen animate-rise">
-      <AppHeader label="Nova entrevista" />
-
-      <main className="mx-auto w-full max-w-[760px] px-4 pt-8 pb-14 sm:px-6 sm:pt-10 sm:pb-18">
-        <InterviewStepper current={1} className="mb-12" />
-
-        <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
-          Sobre qual vaga vamos treinar?
+    <main className="mx-auto w-full max-w-[760px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+      <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
+        Sobre qual vaga vamos treinar?
         </h1>
         <p className="mb-6 text-[15px] text-fg-2">
           Cole a descrição completa — quanto mais contexto, melhor a entrevista.
@@ -285,7 +289,16 @@ export function JobDescriptionPage() {
           <SavedCard
             vacancy={saved}
             analysis={analysis}
+            locked={stepConcluded}
             onRetryAnalysis={retryAnalysis}
+            onProfileUpdated={(profile) => {
+              setSaved((current) => {
+                if (!current) return current;
+                const next = { ...current, profile };
+                writeVacancyDraft(next);
+                return next;
+              });
+            }}
           />
         )}
 
@@ -302,19 +315,118 @@ export function JobDescriptionPage() {
             Continuar →
           </Button>
         </div>
-      </main>
-    </div>
+    </main>
+  );
+}
+
+/** Revisão somente-leitura da vaga preenchida numa sessão já existente. */
+function VacancyReviewView({ sessionId }: { sessionId: string }) {
+  const [vacancyId, setVacancyId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ParsedVacancyProfile | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
+  const [error, setError] = useState<VacancyError | InterviewError | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const session = await getSession(sessionId);
+        const vacancy = await getVacancy(session.vacancyId);
+        if (cancelled) return;
+        setVacancyId(vacancy.id);
+        setDescription(vacancy.rawDescription);
+        setProfile(vacancy.parsedProfile);
+      } catch (cause: unknown) {
+        if (cancelled) return;
+        setError(
+          cause instanceof VacancyError || cause instanceof InterviewError
+            ? cause
+            : new InterviewError("Não conseguimos carregar esta vaga."),
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  return (
+    <main className="mx-auto w-full max-w-[760px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+        <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
+          Vaga usada nesta entrevista
+        </h1>
+        <p className="mb-6 text-[15px] text-fg-2">
+          Somente leitura — é a descrição que você colou ao iniciar esta sessão.
+        </p>
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-lg border border-[--alpha(var(--color-danger)/45%)] bg-[--alpha(var(--color-danger)/8%)] px-4.5 py-4"
+          >
+            <p className="text-[14.5px] leading-[1.55] text-danger">{error.detail}</p>
+            {error.hint && (
+              <p className="mt-1 font-mono text-[11.5px] text-fg-muted">{error.hint}</p>
+            )}
+          </div>
+        )}
+
+        {!error && description === null && (
+          <div className="flex justify-center py-16">
+            <Spinner label="Carregando a vaga..." />
+          </div>
+        )}
+
+        {!error && description !== null && (
+          <>
+            <textarea
+              value={description}
+              disabled
+              aria-label="Descrição da vaga"
+              rows={10}
+              className="min-h-[220px] w-full resize-y rounded-xl border border-border bg-surface px-4.5 py-4 text-[14.5px] leading-[1.6] text-fg opacity-90 disabled:opacity-90"
+            />
+
+            {profile && !profile.outOfScope && vacancyId && (
+              <div className="mt-7 rounded-lg border border-border bg-surface p-5.5">
+                <VacancyProfileSummary
+                  vacancyId={vacancyId}
+                  profile={profile}
+                  locked
+                  onSaved={() => {}}
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="mt-9 flex flex-wrap justify-between gap-3">
+          <ButtonLink to={paths.dashboard} variant="ghost">
+            ← Voltar ao dashboard
+          </ButtonLink>
+
+          <ButtonLink to={interviewPath(sessionId)} className="max-sm:w-full">
+            Ir para a entrevista →
+          </ButtonLink>
+        </div>
+    </main>
   );
 }
 
 function SavedCard({
   vacancy,
   analysis,
+  locked,
   onRetryAnalysis,
+  onProfileUpdated,
 }: {
   vacancy: VacancyDraft;
   analysis: AnalysisOutcome | null;
+  locked: boolean;
   onRetryAnalysis: () => void;
+  onProfileUpdated: (profile: ParsedVacancyProfile) => void;
 }) {
   const profile = vacancy.profile ?? null;
   const problem = analysis?.state === "problem" ? analysis : null;
@@ -348,7 +460,12 @@ function SavedCard({
       )}
 
       {profile && !profile.outOfScope && (
-        <VacancyProfileSummary profile={profile} />
+        <VacancyProfileSummary
+          vacancyId={vacancy.id}
+          profile={profile}
+          locked={locked}
+          onSaved={onProfileUpdated}
+        />
       )}
 
       <p className="mt-4 font-mono text-[11.5px] text-fg-muted">
@@ -390,66 +507,268 @@ function AnalysisProblem({
   );
 }
 
-function VacancyProfileSummary({ profile }: { profile: ParsedVacancyProfile }) {
+function VacancyProfileSummary({
+  vacancyId,
+  profile,
+  locked,
+  onSaved,
+}: {
+  vacancyId: string;
+  profile: ParsedVacancyProfile;
+  locked: boolean;
+  onSaved: (profile: ParsedVacancyProfile) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [technologies, setTechnologies] = useState(profile.technologies);
+  const [keyCompetencies, setKeyCompetencies] = useState(profile.keyCompetencies);
+  const [seniorityLevel, setSeniorityLevel] = useState(profile.seniorityLevel);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<VacancyError | null>(null);
+
   const hasContent =
     profile.technologies.length > 0 || profile.keyCompetencies.length > 0;
 
+  const startEditing = () => {
+    setTechnologies(profile.technologies);
+    setKeyCompetencies(profile.keyCompetencies);
+    setSeniorityLevel(profile.seniorityLevel);
+    setError(null);
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    if (saving) return;
+    setEditing(false);
+    setError(null);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updated = await updateVacancyProfile(vacancyId, {
+        technologies,
+        keyCompetencies,
+        seniorityLevel,
+      });
+      if (updated.parsedProfile) onSaved(updated.parsedProfile);
+      setEditing(false);
+    } catch (cause) {
+      setError(
+        cause instanceof VacancyError
+          ? cause
+          : new VacancyError("Não conseguimos salvar as alterações."),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="mt-5 border-t border-border pt-5">
-      <p className="mb-3 font-mono text-[11px] tracking-[0.08em] text-fg-muted uppercase">
-        O que entendemos da vaga
-      </p>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-mono text-[11px] tracking-[0.08em] text-fg-muted uppercase">
+          O que entendemos da vaga
+        </p>
 
-      <dl className="flex flex-col gap-3.5">
-        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-          <dt className="font-mono text-[11.5px] text-fg-muted">Senioridade</dt>
-          <dd className="text-[14px] text-fg-2">
-            {seniorityLabels[profile.seniorityLevel]}
-          </dd>
-        </div>
+        {!editing && !locked && (
+          <button
+            type="button"
+            onClick={startEditing}
+            className="font-mono text-[11.5px] text-trail-text transition-colors duration-200 hover:underline"
+          >
+            Ajustar
+          </button>
+        )}
+      </div>
 
-        {profile.technologies.length > 0 && (
+      {!editing && (
+        <dl className="flex flex-col gap-3.5">
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <dt className="font-mono text-[11.5px] text-fg-muted">Senioridade</dt>
+            <dd className="text-[14px] text-fg-2">
+              {seniorityLabels[profile.seniorityLevel] ?? "Não identificada"}
+            </dd>
+          </div>
+
+          {profile.technologies.length > 0 && (
+            <div>
+              <dt className="mb-2 font-mono text-[11.5px] text-fg-muted">
+                Tecnologias
+              </dt>
+              <dd className="flex flex-wrap gap-1.5">
+                {profile.technologies.map((technology) => (
+                  <span
+                    key={technology}
+                    className="rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
+                  >
+                    {technology}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
+
+          {profile.keyCompetencies.length > 0 && (
+            <div>
+              <dt className="mb-1.5 font-mono text-[11.5px] text-fg-muted">
+                Competências-chave
+              </dt>
+              <dd className="text-[14px] leading-[1.6] text-fg-2">
+                {profile.keyCompetencies.join(" · ")}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
+
+      {editing && (
+        <div className="flex flex-col gap-4">
           <div>
-            <dt className="mb-2 font-mono text-[11.5px] text-fg-muted">
-              Tecnologias
-            </dt>
-            <dd className="flex flex-wrap gap-1.5">
-              {profile.technologies.map((technology) => (
-                <span
-                  key={technology}
-                  className="rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
-                >
-                  {technology}
-                </span>
+            <label
+              htmlFor="senioridade-select"
+              className="mb-1.5 block font-mono text-[11.5px] text-fg-muted"
+            >
+              Senioridade
+            </label>
+            <select
+              id="senioridade-select"
+              value={seniorityLevel}
+              disabled={saving}
+              onChange={(event) =>
+                setSeniorityLevel(
+                  event.target.value as ParsedVacancyProfile["seniorityLevel"],
+                )
+              }
+              className="rounded-md border border-border bg-surface px-3 py-2 text-[14px] text-fg focus:border-trail-500 focus:outline-none disabled:opacity-60"
+            >
+              {seniorityLevels.map((level) => (
+                <option key={level} value={level}>
+                  {seniorityLabels[level] ?? "Não identificada"}
+                </option>
               ))}
-            </dd>
+            </select>
           </div>
-        )}
 
-        {profile.keyCompetencies.length > 0 && (
-          <div>
-            <dt className="mb-1.5 font-mono text-[11.5px] text-fg-muted">
-              Competências-chave
-            </dt>
-            <dd className="text-[14px] leading-[1.6] text-fg-2">
-              {profile.keyCompetencies.join(" · ")}
-            </dd>
+          <TagListEditor
+            label="Tecnologias"
+            placeholder="ex.: React, Node.js…"
+            values={technologies}
+            onChange={setTechnologies}
+            disabled={saving}
+          />
+
+          <TagListEditor
+            label="Competências-chave"
+            placeholder="ex.: Liderança técnica…"
+            values={keyCompetencies}
+            onChange={setKeyCompetencies}
+            disabled={saving}
+          />
+
+          {error && (
+            <p className="text-[13px] leading-[1.5] text-danger">
+              {error.detail}
+              {error.hint ? ` ${error.hint}` : ""}
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-2.5">
+            <Button onClick={save} disabled={saving}>
+              {saving ? "Salvando…" : "Salvar alterações"}
+            </Button>
+            <Button variant="secondary" onClick={cancelEditing} disabled={saving}>
+              Cancelar
+            </Button>
           </div>
-        )}
-      </dl>
+        </div>
+      )}
 
-      {!hasContent && (
+      {!editing && !hasContent && (
         <p className="text-[13.5px] leading-[1.55] text-fg-2">
           A IA não conseguiu extrair tecnologias desta descrição. A entrevista
-          segue, com perguntas mais gerais.
+          segue, com perguntas mais gerais — ou ajuste manualmente acima.
         </p>
       )}
 
-      {hasContent && profile.confidence === "low" && (
+      {!editing && hasContent && profile.confidence === "low" && (
         <p className="mt-3.5 font-mono text-[11px] text-fg-muted">
           Leitura com confiança baixa — confira se a descrição está completa.
         </p>
       )}
+    </div>
+  );
+}
+
+function TagListEditor({
+  label,
+  placeholder,
+  values,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  placeholder: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState("");
+
+  const commit = () => {
+    const value = draft.trim();
+    if (value && !values.includes(value)) onChange([...values, value]);
+    setDraft("");
+  };
+
+  const remove = (value: string) => onChange(values.filter((v) => v !== value));
+
+  return (
+    <div>
+      <p className="mb-1.5 font-mono text-[11.5px] text-fg-muted">{label}</p>
+
+      {values.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {values.map((value) => (
+            <span
+              key={value}
+              className="flex items-center gap-1.5 rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
+            >
+              {value}
+              <button
+                type="button"
+                onClick={() => remove(value)}
+                disabled={disabled}
+                aria-label={`Remover ${value}`}
+                className="text-trail-text/70 transition-colors duration-200 hover:text-trail-text disabled:opacity-60"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === ",") {
+              event.preventDefault();
+              commit();
+            }
+          }}
+          disabled={disabled}
+          placeholder={placeholder}
+          aria-label={`Adicionar em ${label}`}
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-[13.5px] text-fg transition-[border-color,box-shadow] duration-200 focus:border-trail-500 focus:shadow-[0_0_0_3px_--alpha(var(--color-trail-500)/20%)] focus:outline-none disabled:opacity-60"
+        />
+        <Button type="button" variant="secondary" onClick={commit} disabled={disabled}>
+          Adicionar
+        </Button>
+      </div>
     </div>
   );
 }

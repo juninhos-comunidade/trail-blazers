@@ -16,6 +16,43 @@ export function reportPath(sessionId?: string): string {
   return sessionId ? `${paths.report}/${sessionId}` : paths.report;
 }
 
+export function interviewPath(sessionId?: string): string {
+  return sessionId ? `${paths.interview}/${sessionId}` : paths.interview;
+}
+
+export function vacancyReviewPath(sessionId: string): string {
+  return `${paths.newInterview}/${sessionId}`;
+}
+
+export function repoReviewPath(sessionId: string): string {
+  return `${paths.repoChooser}/${sessionId}`;
+}
+
+/**
+ * Para onde a bolinha `step` da `InterviewStepper` deve levar ao revisar uma
+ * sessão. `canViewReport` normalmente é `status !== "in_progress"` (todas as
+ * perguntas já foram respondidas, então o relatório existe ou pode ser gerado).
+ */
+export function buildStepHref(
+  step: number,
+  ctx: { sessionId?: string; canViewReport?: boolean },
+): string | undefined {
+  if (!ctx.sessionId) return undefined;
+
+  switch (step) {
+    case 1:
+      return vacancyReviewPath(ctx.sessionId);
+    case 2:
+      return repoReviewPath(ctx.sessionId);
+    case 3:
+      return interviewPath(ctx.sessionId);
+    case 4:
+      return ctx.canViewReport ? reportPath(ctx.sessionId) : undefined;
+    default:
+      return undefined;
+  }
+}
+
 export const sectionIds = {
   howItWorks: "como-funciona",
 } as const;

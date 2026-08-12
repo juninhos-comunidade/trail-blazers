@@ -4,6 +4,7 @@ import { AuthProvider } from "./auth/AuthProvider";
 import { GuardedFallback } from "./auth/GuardedFallback";
 import { RedirectIfAuthenticated } from "./auth/RedirectIfAuthenticated";
 import { RequireAuth } from "./auth/RequireAuth";
+import { InterviewFlowLayout } from "@components/app/InterviewFlowLayout";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LandingPage } from "./pages/LandingPage";
@@ -31,10 +32,12 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route path={paths.dashboard} element={<DashboardPage />} />
 
-              <Route path={paths.newInterview} element={<JobDescriptionPage />} />
-              <Route path={paths.repoChooser} element={<RepositoryChooserPage />} />
-              <Route path={paths.interview} element={<InterviewPage />} />
-              <Route path={`${paths.report}/:sessionId?`} element={<ReportPage />} />
+              <Route element={<InterviewFlowLayout />}>
+                <Route path={`${paths.newInterview}/:sessionId?`} element={<JobDescriptionPage />} />
+                <Route path={`${paths.repoChooser}/:sessionId?`} element={<RepositoryChooserPage />} />
+                <Route path={`${paths.interview}/:sessionId?`} element={<InterviewPage />} />
+                <Route path={`${paths.report}/:sessionId?`} element={<ReportPage />} />
+              </Route>
             </Route>
 
             <Route path="*" element={<GuardedFallback />} />
