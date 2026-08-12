@@ -52,8 +52,8 @@ describe('GithubStrategy', () => {
     expect(configMock.getOrThrow).toHaveBeenCalledWith('GITHUB_CALLBACK_URL');
   });
 
-  it('mapeia o profile do GitHub para GithubUser', async () => {
-    await expect(runValidate(buildProfile())).resolves.toEqual({
+  it('mapeia o profile do GitHub para GithubUser', () => {
+    expect(runValidate(buildProfile())).toEqual({
       githubId: '123',
       username: 'john',
       email: 'john@example.com',

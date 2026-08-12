@@ -5,8 +5,6 @@ import { AiQuestion, AiQuestionsResponseSchema } from './schemas/interview.schem
 
 const DESCRIPTION_EXCERPT_CHARS = 3000;
 const MAX_CHARS_PER_FILE = 6000;
-/** Prompt bem maior que o de parsing de vaga (arquivos de código inteiros) — o
- * modelo demora mais para responder, então o timeout padrão de 30s não basta. */
 const REQUEST_TIMEOUT_MS = 60_000;
 
 const SYSTEM_PROMPT = `

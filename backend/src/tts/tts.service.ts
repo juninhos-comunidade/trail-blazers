@@ -4,10 +4,6 @@ import { ConfigService } from '@nestjs/config';
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
 
-/**
- * O fetch do Node embrulha o estouro do AbortSignal.timeout de formas
- * diferentes conforme a versão, então olhamos o erro e a causa dele.
- */
 function isTimeout(err: unknown): boolean {
   const named = err as { name?: string; cause?: { name?: string } } | null;
   return named?.name === 'TimeoutError' || named?.cause?.name === 'TimeoutError';

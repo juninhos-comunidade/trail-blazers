@@ -15,10 +15,6 @@ export const SeniorityLevelSchema = z.enum([
 
 export const ParsingConfidenceSchema = z.enum(['high', 'low']);
 
-/**
- * Estado do processo de análise — responde apenas "já terminou?".
- * O que a análise descobriu fica no parsedProfile.
- */
 export const ParseStatusSchema = z.enum(['pending', 'done', 'failed']);
 
 export type SeniorityLevel = z.infer<typeof SeniorityLevelSchema>;
@@ -73,7 +69,6 @@ export interface VacancyResponse {
   parsedProfile: ParsedVacancyProfile | null;
   parseStatus: ParseStatus;
   parseFailureReason: string | null;
-  /** Derivado de parseStatus. Mantido porque o frontend usa como fim do polling. */
   parsingCompleted: boolean;
   createdAt: Date;
 }

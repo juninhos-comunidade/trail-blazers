@@ -4,10 +4,6 @@ import { AiError, AiProviderPort } from '../vacancies/vacancy-parser.service';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
-/**
- * O fetch do Node embrulha o estouro do AbortSignal.timeout de formas
- * diferentes conforme a versão, então olhamos o erro e a causa dele.
- */
 function isTimeout(err: unknown): boolean {
   const named = err as { name?: string; cause?: { name?: string } } | null;
   return named?.name === 'TimeoutError' || named?.cause?.name === 'TimeoutError';
@@ -65,7 +61,6 @@ export class OpenRouterProvider implements AiProviderPort {
     if (!response.ok) {
       const body = await response.text().catch(() => '');
 
-      // 401 = chave inválida/revogada, 403 = chave sem permissão para o modelo.
       if (response.status === 401 || response.status === 403) {
         throw new AiError(
           'invalid_api_key',

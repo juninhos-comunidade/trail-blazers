@@ -82,8 +82,7 @@ export class RepoFileSelectorService {
       raw = await this.ai.complete(SYSTEM_PROMPT, userMessage);
     } catch (err) {
       const reason = err instanceof AiError ? AI_ERROR_TO_REASON[err.kind] : 'ai_unavailable';
-      const message =
-        err instanceof AiError ? err.message : 'A chamada à IA não foi concluída.';
+      const message = err instanceof AiError ? err.message : 'A chamada à IA não foi concluída.';
       this.logger.warn(`Falha ao consultar a IA para seleção de arquivos: ${message}`);
       throw new FileSelectionError(reason, message, err);
     }

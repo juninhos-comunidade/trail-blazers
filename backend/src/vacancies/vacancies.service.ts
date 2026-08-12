@@ -37,11 +37,6 @@ export class VacanciesService {
     return this.toResponse(vacancy);
   }
 
-  /**
-   * Roda a análise de novo para uma vaga que já existe. Limpa o resultado
-   * anterior antes de começar, para o frontend não continuar vendo o perfil
-   * velho enquanto a nova análise acontece.
-   */
   async reparse(id: string, userId: string): Promise<VacancyResponse> {
     const vacancy = await this.prisma.vacancy.findFirst({ where: { id, userId } });
     if (!vacancy) throw new NotFoundException('Vaga não encontrada.');
@@ -70,17 +65,6 @@ export class VacanciesService {
     return this.toResponse(reset);
   }
 
-  /**
-   * Ajuste manual do perfil lido pela IA — cobre casos em que a análise
-   * automática não capturou bem as nuances da vaga. Só faz sentido depois
-   * que a análise terminou; confidence/outOfScope não mudam aqui, pois quem
-   * está editando manualmente já decidiu que a leitura da IA precisa de ajuste.
-   *
-   * Uma vez que a etapa da vaga foi concluída — ou seja, já existe uma sessão
-   * de entrevista criada a partir dela —, as perguntas já foram geradas com
-   * base no perfil atual. Editar depois disso deixaria o perfil exibido
-   * dessincronizado da entrevista já em andamento, então bloqueamos aqui.
-   */
   async updateProfile(
     id: string,
     userId: string,
@@ -160,10 +144,6 @@ export class VacanciesService {
     });
   }
 
-  /**
-   * Marca a vaga como falha. Não grava perfil: um perfil vazio aqui seria
-   * indistinguível de uma vaga que a IA leu e não achou tecnologias.
-   */
   private async persistFailure(id: string, reason: string): Promise<void> {
     try {
       await this.prisma.vacancy.update({

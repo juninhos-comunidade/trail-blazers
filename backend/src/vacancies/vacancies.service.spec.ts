@@ -49,7 +49,7 @@ const lastUpdateData = (update: jest.Mock): Record<string, unknown> => {
 
 describe('VacanciesService', () => {
   let service: VacanciesService;
-  let prisma: { vacancy: Record<string, jest.Mock> };
+  let prisma: { vacancy: Record<string, jest.Mock>; session: Record<string, jest.Mock> };
   let parser: jest.Mocked<VacancyParserService>;
 
   beforeEach(async () => {
@@ -60,6 +60,7 @@ describe('VacanciesService', () => {
         findFirst: jest.fn(),
         findMany: jest.fn(),
       },
+      session: { findFirst: jest.fn() },
     };
 
     parser = { parse: jest.fn() } as unknown as jest.Mocked<VacancyParserService>;
@@ -270,6 +271,86 @@ describe('VacanciesService', () => {
 
       expect(lastUpdateData(prisma.vacancy.update).parseFailureReason).toBe('invalid_api_key');
     });
+  });
+
+  describe('updateProfile (UC-18)', () => {
+    const PROFILE_DTO = {
+      technologies: ['Go'],
+      seniorityLevel: 'senior' as const,
+      keyCompetencies: ['Concorrência'],
+    };
+
+    it('CT-18.1 🔒 recusa editar vaga de outro usuário', async () => {
+      prisma.vacancy.findFirst.mockResolvedValue(null);
+
+      await expect(service.updateProfile('vaga-1', 'outro-user', PROFILE_DTO)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.vacancy.update).not.toHaveBeenCalled();
+    });
+
+    it.each(['pending', 'failed'])(
+      'CT-18.2 recusa editar vaga com parseStatus=%s',
+      async (parseStatus) => {
+        prisma.vacancy.findFirst.mockResolvedValue(makeRow({ parseStatus }));
+
+        await expect(service.updateProfile('vaga-1', USER_ID, PROFILE_DTO)).rejects.toThrow(
+          ConflictException,
+        );
+        expect(prisma.vacancy.update).not.toHaveBeenCalled();
+      },
+    );
+
+    it('CT-18.3 recusa editar vaga que já virou entrevista', async () => {
+      prisma.vacancy.findFirst.mockResolvedValue(makeRow({ parseStatus: 'done' }));
+      prisma.session.findFirst.mockResolvedValue({ id: 'sessao-1' });
+
+      await expect(service.updateProfile('vaga-1', USER_ID, PROFILE_DTO)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.session.findFirst).toHaveBeenCalledWith({ where: { vacancyId: 'vaga-1' } });
+      expect(prisma.vacancy.update).not.toHaveBeenCalled();
+    });
+
+    it('CT-18.4 grava os três campos sem tocar em confiança nem escopo', async () => {
+      prisma.vacancy.findFirst.mockResolvedValue(makeRow({ parseStatus: 'done' }));
+      prisma.session.findFirst.mockResolvedValue(null);
+      prisma.vacancy.update.mockResolvedValue(
+        makeRow({
+          parseStatus: 'done',
+          parsedStack: ['Go'],
+          parsedSeniority: 'senior',
+          parsedSkills: ['Concorrência'],
+          parseConfidence: 1.0,
+        }),
+      );
+
+      const result = await service.updateProfile('vaga-1', USER_ID, PROFILE_DTO);
+
+      expect(prisma.vacancy.update).toHaveBeenCalledWith({
+        where: { id: 'vaga-1' },
+        data: {
+          parsedStack: ['Go'],
+          parsedSeniority: 'senior',
+          parsedSkills: ['Concorrência'],
+        },
+      });
+      const data = lastUpdateData(prisma.vacancy.update);
+      expect(data.parseConfidence).toBeUndefined();
+      expect(data.parsedOutOfScope).toBeUndefined();
+      expect(result.parsedProfile?.technologies).toEqual(['Go']);
+    });
+  });
+
+  it('CT-18.5 não propaga falha ao gravar o status de erro do parsing', async () => {
+    prisma.vacancy.create.mockResolvedValue(makeRow());
+    parser.parse.mockRejectedValue(new VacancyParseError('timeout', 'demorou demais'));
+    prisma.vacancy.update.mockRejectedValue(new Error('db fora do ar'));
+
+    await expect(service.create(USER_ID, { description: VALID_DESC })).resolves.toBeDefined();
+    await flushBackground();
+
+    expect(prisma.vacancy.update).toHaveBeenCalled();
   });
 
   it('retorna lista de vagas do usuário em ordem decrescente', async () => {
