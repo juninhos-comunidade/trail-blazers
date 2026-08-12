@@ -3,6 +3,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -74,6 +75,8 @@ const GITHUB_REPOS_URL =
 
 @Injectable()
 export class RepositoriesService {
+  private readonly logger = new Logger(RepositoriesService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly prisma: PrismaService,
@@ -235,6 +238,11 @@ export class RepositoriesService {
 
       const content = await this.fetchFileRawContent(owner, repo, path, token);
 
+      if (content === null) {
+        omittedFiles.push(path);
+        continue;
+      }
+
       if (currentCharCount + content.length <= MAX_CONTEXT_CHARS) {
         relevantFiles.push({ path, content });
         currentCharCount += content.length;
@@ -314,10 +322,18 @@ export class RepositoriesService {
     repo: string,
     path: string,
     token: string,
-  ): Promise<string> {
+  ): Promise<string | null> {
     const res = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.ok ? await res.text() : '';
+
+    if (!res.ok) {
+      this.logger.warn(
+        `Download falhou [${res.status}] ${owner}/${repo}/${path} — arquivo omitido.`,
+      );
+      return null;
+    }
+
+    return res.text();
   }
 }

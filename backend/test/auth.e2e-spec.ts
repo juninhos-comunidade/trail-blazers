@@ -32,6 +32,9 @@ describe('Autenticação e autorização (e2e)', () => {
       findUnique: jest.fn(),
       upsert: jest.fn(),
     },
+    vacancy: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };
@@ -63,16 +66,16 @@ describe('Autenticação e autorização (e2e)', () => {
     jwtService.sign({ sub: usuario.id, username: usuario.username, ...payload });
 
   describe('UC-05 — rotas protegidas por padrão', () => {
-    it('GET / sem token devolve 401', () => {
-      return request(app.getHttpServer()).get('/').expect(401);
+    it('GET /vacancies sem token devolve 401', () => {
+      return request(app.getHttpServer()).get('/vacancies').expect(401);
     });
 
-    it('GET / com token válido devolve 200', () => {
+    it('GET /vacancies com token válido devolve 200', () => {
       return request(app.getHttpServer())
-        .get('/')
+        .get('/vacancies')
         .set('Authorization', `Bearer ${tokenValido()}`)
         .expect(200)
-        .expect('Hello World!');
+        .expect([]);
     });
 
     it('rota inexistente devolve 404 mesmo autenticado', () => {
@@ -91,7 +94,7 @@ describe('Autenticação e autorização (e2e)', () => {
 
   describe('UC-04 — validação do token', () => {
     it('rejeita requisição sem header Authorization', () => {
-      return request(app.getHttpServer()).get('/').expect(401);
+      return request(app.getHttpServer()).get('/vacancies').expect(401);
     });
 
     it.each([
@@ -100,14 +103,17 @@ describe('Autenticação e autorização (e2e)', () => {
       ['token malformado', 'Bearer nao-e-um-jwt'],
       ['token vazio', 'Bearer '],
     ])('rejeita %s', (_descricao, header) => {
-      return request(app.getHttpServer()).get('/').set('Authorization', header).expect(401);
+      return request(app.getHttpServer())
+        .get('/vacancies')
+        .set('Authorization', header)
+        .expect(401);
     });
 
     it('rejeita token expirado', () => {
       const expirado = jwtService.sign({ sub: usuario.id }, { expiresIn: '-1s' });
 
       return request(app.getHttpServer())
-        .get('/')
+        .get('/vacancies')
         .set('Authorization', `Bearer ${expirado}`)
         .expect(401);
     });
@@ -118,7 +124,7 @@ describe('Autenticação e autorização (e2e)', () => {
       });
 
       return request(app.getHttpServer())
-        .get('/')
+        .get('/vacancies')
         .set('Authorization', `Bearer ${forjado}`)
         .expect(401);
     });
@@ -127,14 +133,14 @@ describe('Autenticação e autorização (e2e)', () => {
       prismaMock.user.findUnique.mockResolvedValue(null);
 
       return request(app.getHttpServer())
-        .get('/')
+        .get('/vacancies')
         .set('Authorization', `Bearer ${tokenValido()}`)
         .expect(401);
     });
 
     it('busca o usuário pelo `sub` do token', async () => {
       await request(app.getHttpServer())
-        .get('/')
+        .get('/vacancies')
         .set('Authorization', `Bearer ${tokenValido()}`)
         .expect(200);
 

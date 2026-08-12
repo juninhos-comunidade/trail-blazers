@@ -146,7 +146,7 @@ export class SessionsService {
       createdAt: session.createdAt,
       completedAt: session.completedAt,
       vacancy: {
-        seniorityLevel: (session.vacancy.parsedSeniority ?? 'unknown') as string,
+        seniorityLevel: session.vacancy.parsedSeniority ?? 'unknown',
         technologies: (session.vacancy.parsedStack ?? []) as string[],
       },
       repo: session.repos[0] ? { fullName: session.repos[0].repoFullName } : null,
@@ -259,7 +259,9 @@ export class SessionsService {
     const sessionRepo = session.repos[0];
     const codeSamples = session.questions
       .map((q) => q.metadata as { codeFile?: string; codeExcerpt?: string } | null)
-      .filter((m): m is { codeFile: string; codeExcerpt: string } => !!m?.codeFile && !!m?.codeExcerpt)
+      .filter(
+        (m): m is { codeFile: string; codeExcerpt: string } => !!m?.codeFile && !!m?.codeExcerpt,
+      )
       .map((m) => ({ file: m.codeFile, excerpt: m.codeExcerpt }));
 
     let report;
@@ -297,9 +299,6 @@ export class SessionsService {
         },
       });
     } catch (err) {
-      // Duas chamadas concorrentes (ex.: efeito duplicado do React em dev) podem
-      // passar juntas pelo cheque de "já existe" antes de qualquer uma commitar.
-      // Quem perder a corrida devolve o relatório que a outra já criou.
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         const race = await this.prisma.report.findUnique({ where: { sessionId } });
         if (race) return this.toReportResponse(race, sessionId);

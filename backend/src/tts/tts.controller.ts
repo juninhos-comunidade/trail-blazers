@@ -9,9 +9,7 @@ export class TtsController {
 
   @Post('speak')
   @Header('Content-Type', 'audio/mpeg')
-  async speak(
-    @Body(new ZodValidationPipe(SpeakSchema)) dto: SpeakDto,
-  ): Promise<StreamableFile> {
+  async speak(@Body(new ZodValidationPipe(SpeakSchema)) dto: SpeakDto): Promise<StreamableFile> {
     const audio = await this.service.synthesize(dto.text);
     return new StreamableFile(audio);
   }

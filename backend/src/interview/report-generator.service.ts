@@ -4,8 +4,6 @@ import { ParsedVacancyProfile } from '../vacancies/schemas/vacancy.schema';
 import { AiReport, AiReportSchema } from './schemas/interview.schema';
 
 const DESCRIPTION_EXCERPT_CHARS = 3000;
-/** Prompt inclui todas as perguntas e respostas — pode ficar grande, então usamos
- * o mesmo timeout estendido da geração de perguntas em vez do padrão de 30s. */
 const REQUEST_TIMEOUT_MS = 60_000;
 
 const SYSTEM_PROMPT = `

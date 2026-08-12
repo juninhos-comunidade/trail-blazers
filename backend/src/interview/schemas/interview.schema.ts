@@ -36,15 +36,20 @@ export const AiReportSchema = z.object({
   adherenceScore: z.number().min(0).max(100),
   adherenceNotes: z
     .array(z.object({ title: z.string(), text: z.string() }))
-    .min(1)
     .max(4)
     .default([]),
   dimensionScores: z
     .array(z.object({ label: z.string(), score: z.number().min(0).max(100) }))
     .min(1)
     .max(8),
-  strengths: z.array(z.object({ title: z.string(), text: z.string() })).max(6).default([]),
-  gaps: z.array(z.object({ title: z.string(), text: z.string() })).max(6).default([]),
+  strengths: z
+    .array(z.object({ title: z.string(), text: z.string() }))
+    .max(6)
+    .default([]),
+  gaps: z
+    .array(z.object({ title: z.string(), text: z.string() }))
+    .max(6)
+    .default([]),
   recommendations: z
     .array(z.object({ title: z.string(), text: z.string() }))
     .max(6)
