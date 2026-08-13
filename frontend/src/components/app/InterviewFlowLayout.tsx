@@ -5,7 +5,7 @@ import { AppHeader } from "@components/app/AppHeader";
 import { InterviewStepper } from "@components/app/InterviewStepper";
 import { Container } from "@components/ui/Container";
 import { getSession, type SessionStatus } from "@lib/interview-api";
-import { readSessionDraft } from "@lib/interview-draft";
+import { readSessionDraft, readVacancyDraft } from "@lib/interview-draft";
 import { buildStepHref, paths } from "@routes/paths";
 
 function stepFromPathname(pathname: string): number {
@@ -56,14 +56,26 @@ export function InterviewFlowLayout() {
   }, [pathname, paramSessionId]);
 
   const hasSession = Boolean(sessionId);
+  const hasVacancy = Boolean(readVacancyDraft());
   const interviewDone = status !== null && status !== "in_progress" && status !== "preparing";
   const reportDone = status === "completed";
   /**
-   * `hasSession` decide primeiro: se a sessão mudou (ou deixou de existir) e o
-   * fetch acima ainda não voltou, um `status` de uma sessão anterior não pode
-   * "vazar" e marcar passos como concluídos indevidamente.
+   * `hasSession` decide antes das etapas seguintes: se a sessão mudou (ou
+   * deixou de existir) e o fetch acima ainda não voltou, um `status` de uma
+   * sessão anterior não pode "vazar" e marcar passos como concluídos
+   * indevidamente. A etapa 1, porém, não depende de sessão nenhuma — ela é
+   * concluída assim que o usuário salva a vaga e clica em "Continuar",
+   * antes de qualquer sessão existir.
    */
-  const maxCompletedStep = !hasSession ? 0 : reportDone ? 4 : interviewDone ? 3 : 2;
+  const maxCompletedStep = reportDone
+    ? 4
+    : interviewDone
+      ? 3
+      : hasSession
+        ? 2
+        : hasVacancy
+          ? 1
+          : 0;
 
   return (
     <div className="flex h-dvh flex-col">
