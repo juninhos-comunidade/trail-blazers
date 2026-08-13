@@ -51,6 +51,7 @@ export function RepositoryList({
       {pageCount > 1 && (
         <Pagination
           ariaLabel="Paginação dos repositórios"
+          mobileCenter
           page={currentPage}
           pageCount={pageCount}
           total={repositories.length}

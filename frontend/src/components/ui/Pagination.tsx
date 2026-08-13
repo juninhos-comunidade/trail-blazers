@@ -31,6 +31,7 @@ export interface PaginationProps {
   onChange: (page: number) => void;
   ariaLabel: string;
   className?: string;
+  mobileCenter?: boolean;
 }
 
 export function Pagination({
@@ -42,11 +43,18 @@ export function Pagination({
   onChange,
   ariaLabel,
   className,
+  mobileCenter = false,
 }: PaginationProps) {
   return (
     <nav
       aria-label={ariaLabel}
-      className={cn("mt-6 flex flex-wrap items-center justify-between gap-3", className)}
+      className={cn(
+        "mt-6 flex gap-3",
+        mobileCenter
+          ? "flex-col items-center sm:flex-row sm:flex-wrap sm:justify-between"
+          : "flex-wrap items-center justify-between",
+        className,
+      )}
     >
       <p aria-live="polite" className="font-mono text-[11.5px] text-fg-muted">
         {rangeStart}–{rangeEnd} de {total} · página {page} de {pageCount}

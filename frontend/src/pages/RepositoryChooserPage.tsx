@@ -158,7 +158,7 @@ function RepositoryChooserForm() {
   return (
     <main className="mx-auto w-full max-w-[860px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
         <div className="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-end">
-          <div>
+          <div className="w-full min-w-0 sm:w-auto">
             <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
               Quais projetos entram na análise?
             </h1>
@@ -168,7 +168,7 @@ function RepositoryChooserForm() {
               {SELECTION_LIMIT === 1 ? "repositório" : "repositórios"} para uma
               análise mais focada.
             </p>
-            <p className="mt-2 max-w-[62ch] truncate font-mono text-[11.5px] text-fg-muted">
+            <p className="mt-2 max-w-full truncate font-mono text-[11.5px] text-fg-muted sm:max-w-[62ch]">
               Vaga #{vacancy.id.slice(0, 8)} · {vacancy.description}
             </p>
           </div>
