@@ -190,7 +190,7 @@ export function ReportPage() {
               </Card>
             </div>
 
-            <div className="mt-10 flex flex-wrap justify-center gap-3">
+            <div className="mt-10 flex flex-col-reverse items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
               <ButtonLink to={paths.newInterview} className="max-sm:w-full">
                 Nova entrevista
               </ButtonLink>

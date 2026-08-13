@@ -84,7 +84,7 @@ A jornada do usuário na aplicação segue estes passos:
 
 **Inteligência Artificial**
 - Geração de texto via [OpenRouter](https://openrouter.ai/) (modelo padrão configurável, `openai/gpt-oss-20b:free`), usada em três pontos: extração do perfil da vaga, seleção dos arquivos relevantes do repositório e geração das perguntas de entrevista.
-- Narração por voz via [ElevenLabs](https://elevenlabs.io/), com **fallback automático** para a Web Speech API nativa do navegador caso a chave de API não esteja configurada.
+- Narração por voz via [Azure Speech](https://azure.microsoft.com/products/ai-services/ai-speech) (tier gratuito), com **fallback automático** para a Web Speech API nativa do navegador caso a chave não esteja configurada ou o limite do tier gratuito seja atingido.
 
 **Infraestrutura**
 - PostgreSQL via Docker Compose para desenvolvimento local
@@ -106,7 +106,7 @@ src/
 ├── vacancies/        # Recebimento e parsing de vagas via IA
 ├── ai/        # Provider de IA (OpenRouter), abstraído por interface
 ├── interview/        # Orquestração de sessões, geração de perguntas e relatório
-└── tts/        # Text-to-speech (ElevenLabs)
+└── tts/        # Text-to-speech (Azure Speech)
 ```
 
 Uma decisão de design vale destacar: o acesso à IA é abstraído por uma porta (`AiProviderPort`), então o `OpenRouterProvider` é uma implementação substituível — trocar de fornecedor de IA não exige alterar a lógica de negócio dos módulos que a consomem.
@@ -156,7 +156,7 @@ Toda contribuição de IA foi revisada, validada e integrada pelo time, que perm
 - Docker e Docker Compose (para o PostgreSQL local)
 - Uma conta no GitHub para criar um [OAuth App](https://github.com/settings/developers)
 - Uma chave de API da [OpenRouter](https://openrouter.ai/keys) (obrigatória)
-- Opcional: uma chave da [ElevenLabs](https://elevenlabs.io/) (sem ela, a narração cai automaticamente para a Web Speech API do navegador)
+- Opcional: uma chave do [Azure Speech](https://azure.microsoft.com/products/ai-services/ai-speech) (sem ela, a narração cai automaticamente para a Web Speech API do navegador)
 
 ### 1. Clonar o repositório
 
@@ -184,7 +184,7 @@ Preencha o `.env` com:
 | `ENCRYPTION_KEY` | Sim | 64 caracteres hexadecimais (32 bytes). Gere com `openssl rand -hex 32` |
 | `OPENROUTER_API_KEY` | Sim | Sem ela a aplicação não sobe. Gere em [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `AI_MODEL` | Não | Padrão: `openai/gpt-oss-20b:free` |
-| `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` | Não | Sem a chave, o endpoint de TTS cai para a Web Speech API no navegador |
+| `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` / `AZURE_SPEECH_VOICE` | Não | Sem a chave, o endpoint de TTS cai para a Web Speech API no navegador |
 | `FRONTEND_URL` | Não | Padrão: `http://localhost:3001` |
 
 Suba o banco e rode as migrations:
@@ -252,7 +252,7 @@ O backend valida todas as variáveis obrigatórias na inicialização (via Joi) 
 Confirme que `GITHUB_CALLBACK_URL` no backend é *exatamente* igual à cadastrada no OAuth App do GitHub, e que `VITE_API_URL` no frontend aponta para a porta correta do backend.
 
 **A narração por voz não funciona / cai para a voz do navegador**
-Isso é o comportamento esperado quando `ELEVENLABS_API_KEY` não está configurada — é um fallback intencional, não um erro.
+Isso é o comportamento esperado quando `AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION` não estão configuradas, ou quando o limite de 1 requisição concorrente do tier gratuito é atingido — é um fallback intencional, não um erro. A interface avisa o usuário quando isso acontece.
 
 **Erro de geração de perguntas ou de parsing da vaga**
 Confirme que `OPENROUTER_API_KEY` é válida e tem créditos/uso disponível no modelo configurado em `AI_MODEL`. Os erros mais comuns (`invalid_api_key`, `rate_limited`, `payment_required`, `timeout`) são tratados de forma explícita pela API e retornados com essa causa identificada.

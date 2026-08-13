@@ -11,7 +11,7 @@ interface Highlight {
 const highlights: Highlight[] = [
   { label: "Perguntas de lógica na linguagem da vaga", tone: "trail" },
   { label: "Cenários do dia a dia de um time real", tone: "trail" },
-  { label: "Análise das decisões técnicas no seu código", tone: "ember" },
+  { label: "Análise das decisões técnicas no seu código", tone: "trail" },
 ];
 
 function InterviewPreview() {

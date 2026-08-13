@@ -20,9 +20,7 @@ export function AppHeader({ label }: { label?: string }) {
           </span>
         ) : (
           <div className="flex min-w-0 items-center gap-2">
-            <div className="hidden sm:block">
-              <ThemeToggle />
-            </div>
+            <ThemeToggle />
             <UserMenu />
           </div>
         )}

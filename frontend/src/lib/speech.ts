@@ -1,4 +1,4 @@
-import { synthesizeSpeech } from "./tts-api";
+import { synthesizeSpeech, TtsError, type TtsFailureReason } from "./tts-api";
 
 interface SpeechRecognitionResultLike {
   isFinal: boolean;
@@ -145,12 +145,49 @@ function stopCurrentAudio(): void {
 }
 
 /**
- * Fala um texto com a voz mais humana disponível: primeiro tenta o TTS do
- * backend (ElevenLabs), que soa igual em qualquer navegador; se a chamada
- * falhar (sem cota, sem chave configurada, sem rede), cai para a Web Speech
- * API do próprio navegador — nunca fica sem voz nenhuma.
+ * Resultado de uma chamada a `speak`, para que a UI possa avisar o usuário
+ * quando a voz não veio do servidor (ex. tier gratuito do Azure Speech sem
+ * cota, ocupado por outra entrevista, ou não configurado).
  */
-export async function speak(text: string, { lang = "pt-BR" }: { lang?: string } = {}): Promise<void> {
+export type SpeechStatus =
+  | { source: "server" }
+  | { source: "browser"; reason: TtsFailureReason }
+  | { source: "none"; reason: TtsFailureReason };
+
+const FALLBACK_MESSAGES: Record<TtsFailureReason, string> = {
+  not_configured: "Leitura de voz do servidor não configurada",
+  rate_limited: "Leitor de voz do servidor ocupado com outra entrevista agora",
+  unavailable: "Leitor de voz do servidor indisponível no momento",
+  network_error: "Não foi possível conectar ao leitor de voz do servidor",
+  unknown: "Leitor de voz do servidor falhou",
+};
+
+/**
+ * Traduz um `SpeechStatus` para uma frase exibível ao usuário. Retorna
+ * `null` quando a voz veio do servidor com sucesso — nesse caso não há nada
+ * a avisar.
+ */
+export function describeSpeechStatus(status: SpeechStatus): string | null {
+  if (status.source === "server") return null;
+
+  const base = FALLBACK_MESSAGES[status.reason];
+  return status.source === "browser"
+    ? `${base} — usando a voz do navegador.`
+    : `${base}, e este navegador não tem leitura de voz embutida.`;
+}
+
+/**
+ * Fala um texto com a voz mais humana disponível: primeiro tenta o TTS do
+ * backend (Azure Speech), que soa igual em qualquer navegador; se a chamada
+ * falhar (sem cota, sem chave configurada, concorrência do tier gratuito
+ * esgotada, sem rede), cai para a Web Speech API do próprio navegador —
+ * nunca fica sem voz nenhuma. `onStatus`, se informado, é chamado com o
+ * resultado para que a UI possa avisar o usuário de forma transparente.
+ */
+export async function speak(
+  text: string,
+  { lang = "pt-BR", onStatus }: { lang?: string; onStatus?: (status: SpeechStatus) => void } = {},
+): Promise<void> {
   stopCurrentAudio();
   if (isSpeechSynthesisSupported()) window.speechSynthesis.cancel();
 
@@ -163,9 +200,17 @@ export async function speak(text: string, { lang = "pt-BR" }: { lang?: string } 
     currentAudio = audio;
 
     await audio.play();
+    onStatus?.({ source: "server" });
     return;
-  } catch {
-    // Servidor sem TTS configurado, sem cota, ou sem rede — cai para o navegador.
+  } catch (err) {
+    const reason = err instanceof TtsError ? err.reason : "unknown";
+
+    if (!isSpeechSynthesisSupported()) {
+      onStatus?.({ source: "none", reason });
+      return;
+    }
+
+    onStatus?.({ source: "browser", reason });
   }
 
   await speakWithBrowser(text, { lang });

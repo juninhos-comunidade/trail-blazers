@@ -237,13 +237,17 @@ function RepositoryChooserForm() {
           />
         )}
 
-        <div className="mt-9 flex flex-wrap justify-between gap-3">
-          <ButtonLink to={paths.newInterview} variant="ghost" disabled={status === "analyzing"}>
+        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-between">
+          <ButtonLink
+            to={paths.newInterview}
+            variant="secondary"
+            disabled={status === "analyzing"}
+            className="max-sm:w-full"
+          >
             ← Voltar
           </ButtonLink>
 
           <Button
-            variant="ember"
             disabled={status === "analyzing" || (!offerSkip && !canStart)}
             className="max-sm:w-full"
             onClick={offerSkip ? skipRepositories : startInterview}
@@ -342,8 +346,8 @@ function RepositoryReviewView({ sessionId }: { sessionId: string }) {
           </div>
         )}
 
-        <div className="mt-9 flex flex-wrap justify-between gap-3">
-          <ButtonLink to={paths.dashboard} variant="ghost">
+        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-between">
+          <ButtonLink to={paths.dashboard} variant="secondary" className="max-sm:w-full">
             ← Voltar ao dashboard
           </ButtonLink>
 

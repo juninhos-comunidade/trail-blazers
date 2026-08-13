@@ -26,9 +26,7 @@ export function LandingHeader() {
             </a>
           </div>
 
-          <div className="hidden md:block">
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
 
           {isAuthenticated ? (
             <UserMenu />

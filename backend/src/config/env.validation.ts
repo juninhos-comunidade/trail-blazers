@@ -33,10 +33,12 @@ export const envValidationSchema = Joi.object({
   AI_MODEL: Joi.string().default('openai/gpt-oss-20b:free'),
   APP_TITLE: Joi.string().default('Trail Blazers'),
 
-  // Opcional. Sem ela, o endpoint de TTS responde 503 e o frontend cai de
-  // volta na Web Speech API do navegador. Gere em elevenlabs.io
-  ELEVENLABS_API_KEY: Joi.string().optional(),
-  ELEVENLABS_VOICE_ID: Joi.string().default('21m00Tcm4TlvDq8ikWAM'),
+  // Opcionais. Sem elas, o endpoint de TTS responde 503 e o frontend cai de
+  // volta na Web Speech API do navegador. Gere em portal.azure.com (recurso
+  // "Speech", tier gratuito F0: 0,5M caracteres/mês, 1 req. concorrente).
+  AZURE_SPEECH_KEY: Joi.string().optional(),
+  AZURE_SPEECH_REGION: Joi.string().optional(),
+  AZURE_SPEECH_VOICE: Joi.string().default('pt-BR-FranciscaNeural'),
 
   // JWT
   JWT_SECRET: Joi.string().min(32).required().messages({

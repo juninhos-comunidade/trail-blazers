@@ -244,11 +244,11 @@ export function InterviewPage() {
           <div className="flex-none border-t border-border bg-bg px-4 pt-3.5 pb-4.5 sm:px-5">
             <div className="mx-auto w-full max-w-[760px]">
               {finished ? (
-                <div className="flex flex-wrap justify-center gap-3 py-1.5">
-                  <ButtonLink to={reportPath(session.id)} variant="ember" size="lg" className="max-sm:w-full">
+                <div className="flex flex-col-reverse items-center gap-3 py-1.5 sm:flex-row sm:flex-wrap sm:justify-center">
+                  <ButtonLink to={reportPath(session.id)} className="max-sm:w-full">
                     Ver meu relatório →
                   </ButtonLink>
-                  <ButtonLink to={paths.dashboard} variant="secondary" size="lg" className="max-sm:w-full">
+                  <ButtonLink to={paths.dashboard} variant="secondary" className="max-sm:w-full">
                     Voltar ao dashboard
                   </ButtonLink>
                 </div>
