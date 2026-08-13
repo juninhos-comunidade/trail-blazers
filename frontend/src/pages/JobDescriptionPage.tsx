@@ -459,7 +459,7 @@ function SavedCard({
         </p>
       )}
 
-      {profile && !profile.outOfScope && (
+      {profile && (
         <VacancyProfileSummary
           vacancyId={vacancy.id}
           profile={profile}
