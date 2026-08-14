@@ -63,6 +63,7 @@ export interface GenerateQuestionsInput {
   profile: ParsedVacancyProfile;
   files: { path: string; content: string }[];
   count: number;
+  onProgress?: (message: string) => void;
 }
 
 @Injectable()
@@ -72,6 +73,10 @@ export class QuestionGeneratorService {
   constructor(private readonly ai: AiProviderPort) {}
 
   async generate(input: GenerateQuestionsInput): Promise<AiQuestion[]> {
+    input.onProgress?.(
+      'Montando as perguntas da entrevista com a IA — pode levar até um minuto...',
+    );
+
     const systemPrompt = SYSTEM_PROMPT.replace('{count}', String(input.count));
 
     const userMessage = JSON.stringify({

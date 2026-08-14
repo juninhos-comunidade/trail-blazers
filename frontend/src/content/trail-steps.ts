@@ -15,9 +15,9 @@ export const trailSteps: TrailStep[] = [
   },
   {
     number: "02",
-    title: "Escolha seus repositórios",
+    title: "Escolha seu repositório",
     description:
-      "Você decide quais projetos entram na análise. Até 3 por sessão — nada é publicado.",
+      "Você decide qual projeto entra na análise, entre os seus públicos. 1 por sessão — nada é publicado.",
     tone: "trail",
   },
   {

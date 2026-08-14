@@ -28,11 +28,6 @@ export function repoReviewPath(sessionId: string): string {
   return `${paths.repoChooser}/${sessionId}`;
 }
 
-/**
- * Para onde a bolinha `step` da `InterviewStepper` deve levar ao revisar uma
- * sessão. `canViewReport` normalmente é `status !== "in_progress"` (todas as
- * perguntas já foram respondidas, então o relatório existe ou pode ser gerado).
- */
 export function buildStepHref(
   step: number,
   ctx: { sessionId?: string; canViewReport?: boolean },

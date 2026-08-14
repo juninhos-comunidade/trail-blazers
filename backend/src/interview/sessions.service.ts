@@ -1,9 +1,15 @@
 import { HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, type Question, type Session, type SessionRepo } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
+import { Prisma, type Question, type Report, type Session, type SessionRepo } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RepositoriesService } from '../repos/repos.service';
 import { ParsedVacancyProfile } from '../vacancies/schemas/vacancy.schema';
-import { CreateSessionDto, SubmitAnswerDto } from './schemas/interview.schema';
+import {
+  AiQuestion,
+  AiReport,
+  CreateSessionDto,
+  SubmitAnswerDto,
+} from './schemas/interview.schema';
 import { QuestionGenerationError, QuestionGeneratorService } from './question-generator.service';
 import { ReportGenerationError, ReportGeneratorService } from './report-generator.service';
 
@@ -18,9 +24,18 @@ export class SessionsService {
     private readonly repositoriesService: RepositoriesService,
     private readonly questionGenerator: QuestionGeneratorService,
     private readonly reportGenerator: ReportGeneratorService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(userId: string, dto: CreateSessionDto) {
+    return this.createWithProgress(userId, dto, () => {});
+  }
+
+  async createWithProgress(
+    userId: string,
+    dto: CreateSessionDto,
+    onProgress: (message: string) => void,
+  ) {
     const vacancy = await this.prisma.vacancy.findFirst({
       where: { id: dto.vacancyId, userId },
     });
@@ -36,7 +51,7 @@ export class SessionsService {
       );
     }
 
-    if (vacancy.parseStatus === 'failed' || vacancy.parsedOutOfScope) {
+    if (vacancy.parseStatus === 'failed') {
       throw new HttpException(
         {
           code: 'vaga_sem_perfil',
@@ -61,15 +76,17 @@ export class SessionsService {
       dto.owner,
       dto.repo,
       dto.vacancyId,
+      onProgress,
     );
 
-    let questions;
+    let questions: AiQuestion[];
     try {
       questions = await this.questionGenerator.generate({
         rawDescription: vacancy.rawDescription,
         profile,
         files: analysis.relevantFiles,
         count: dto.questionCount,
+        onProgress,
       });
     } catch (err) {
       throw this.mapAiError(err, 'ia_indisponivel_perguntas');
@@ -79,6 +96,10 @@ export class SessionsService {
       vacancy.rawDescription.length +
       analysis.relevantFiles.reduce((sum, file) => sum + file.content.length, 0);
     const estimatedOutputChars = questions.reduce((sum, q) => sum + q.content.length, 0);
+    const totalInputTokens = Math.ceil(estimatedInputChars / 4);
+    const totalOutputTokens = Math.ceil(estimatedOutputChars / 4);
+
+    onProgress('Salvando a sessão da entrevista...');
 
     const session = await this.prisma.$transaction(async (tx) => {
       const created = await tx.session.create({
@@ -86,8 +107,9 @@ export class SessionsService {
           userId,
           vacancyId: dto.vacancyId,
           status: 'in_progress',
-          totalInputTokens: Math.ceil(estimatedInputChars / 4),
-          totalOutputTokens: Math.ceil(estimatedOutputChars / 4),
+          totalInputTokens,
+          totalOutputTokens,
+          estimatedCost: this.estimateCostUsd(totalInputTokens, totalOutputTokens),
         },
       });
 
@@ -264,7 +286,7 @@ export class SessionsService {
       )
       .map((m) => ({ file: m.codeFile, excerpt: m.codeExcerpt }));
 
-    let report;
+    let report: AiReport;
     try {
       report = await this.reportGenerator.generate({
         rawDescription: session.vacancy.rawDescription,
@@ -284,7 +306,7 @@ export class SessionsService {
       throw this.mapAiError(err, 'ia_indisponivel_relatorio');
     }
 
-    let created;
+    let created: Report;
     try {
       created = await this.prisma.report.create({
         data: {
@@ -322,6 +344,16 @@ export class SessionsService {
     if (!session) throw new NotFoundException('Sessão não encontrada.');
 
     return session.report ? this.toReportResponse(session.report, sessionId) : null;
+  }
+
+  private estimateCostUsd(inputTokens: number, outputTokens: number): number {
+    const pricePerMillionInput = this.config.get<number>('AI_PRICE_PER_1M_INPUT_TOKENS', 0);
+    const pricePerMillionOutput = this.config.get<number>('AI_PRICE_PER_1M_OUTPUT_TOKENS', 0);
+
+    return (
+      (inputTokens / 1_000_000) * pricePerMillionInput +
+      (outputTokens / 1_000_000) * pricePerMillionOutput
+    );
   }
 
   private mapAiError(err: unknown, code: string): HttpException {

@@ -12,7 +12,6 @@ export interface ParsedVacancyProfile {
   outOfScope: boolean;
 }
 
-/** Estado do processo de análise no backend — responde só "já terminou?". */
 export type ParseStatus = "pending" | "done" | "failed";
 
 const PARSE_STATUSES: ParseStatus[] = ["pending", "done", "failed"];
@@ -28,11 +27,6 @@ export interface Vacancy {
   createdAt: string;
 }
 
-/**
- * Sem entrada para "unknown" de propósito: cada tela decide como tratar
- * senioridade não identificada (omitir, mostrar "—", etc.), então o fallback
- * fica no chamador, não aqui.
- */
 export const seniorityLabels: Partial<Record<ParsedVacancyProfile["seniorityLevel"], string>> = {
   intern: "Estágio",
   trainee: "Trainee",
@@ -42,7 +36,6 @@ export const seniorityLabels: Partial<Record<ParsedVacancyProfile["seniorityLeve
   lead: "Liderança técnica",
 };
 
-/** Todas as opções válidas de senioridade, na ordem que fazem sentido num select. */
 export const seniorityLevels: ParsedVacancyProfile["seniorityLevel"][] = [
   "intern",
   "trainee",
@@ -69,11 +62,6 @@ export class VacancyError extends Error {
 
 type ErrorBody = { message?: string | string[] } | null;
 
-/**
- * Em qual etapa o erro aconteceu. As mensagens precisam ser diferentes: durante
- * o acompanhamento da análise a vaga já foi salva, então dizer "não conseguimos
- * salvar" seria mentira.
- */
 type ErrorContext = "save" | "analysis" | "profile";
 
 function firstMessage(body: ErrorBody): string | undefined {
@@ -158,7 +146,6 @@ function ensureVacancy(payload: unknown): Vacancy {
     );
   }
 
-  // Backend antigo não manda parseStatus: deduzimos do parsingCompleted.
   const parseStatus: ParseStatus = PARSE_STATUSES.includes(
     vacancy.parseStatus as ParseStatus,
   )
@@ -254,11 +241,6 @@ export async function getVacancy(id: string): Promise<Vacancy> {
   return ensureVacancy(payload);
 }
 
-/**
- * Como a análise terminou, já traduzido para o que a tela precisa mostrar.
- * "ok" cobre inclusive a vaga fora de escopo: a IA leu e respondeu, isso é
- * resultado, não falha.
- */
 export type AnalysisOutcome =
   | { state: "ok" }
   | { state: "problem"; detail: string; hint: string; retryable: boolean };
@@ -266,10 +248,6 @@ export type AnalysisOutcome =
 const CAN_CONTINUE =
   "A vaga foi salva. Você pode seguir sem a análise, mas as perguntas serão mais genéricas.";
 
-/**
- * Mensagem por motivo de falha. Cada uma precisa dizer de quem é o problema e
- * se adianta tentar de novo — tentar de novo com a chave errada só repete o erro.
- */
 const FAILURE_MESSAGE: Record<
   string,
   { detail: string; hint: string; retryable: boolean }
@@ -312,7 +290,6 @@ export function describeAnalysis(vacancy: Vacancy): AnalysisOutcome {
     };
   }
 
-  // Ainda pending: quem desistiu de esperar foi o polling, não o backend.
   return {
     state: "problem",
     detail: "A análise está demorando mais do que o esperado.",
@@ -321,7 +298,6 @@ export function describeAnalysis(vacancy: Vacancy): AnalysisOutcome {
   };
 }
 
-/** Manda o backend rodar a análise de novo. Devolve a vaga já zerada em "pending". */
 export async function reparseVacancy(id: string): Promise<Vacancy> {
   const token = readToken();
 
@@ -367,10 +343,6 @@ export async function reparseVacancy(id: string): Promise<Vacancy> {
   return ensureVacancy(payload);
 }
 
-/**
- * Ajuste manual do perfil lido pela IA — para os casos em que a leitura
- * automática não capturou bem as tecnologias/competências/senioridade da vaga.
- */
 export async function updateVacancyProfile(
   id: string,
   patch: Pick<ParsedVacancyProfile, "technologies" | "seniorityLevel" | "keyCompetencies">,

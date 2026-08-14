@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "InterviewTrail é uma plataforma web de simulação de entrevistas técnicas personalizadas para candidatos em início de carreira. O que faz: A aplicação conecta ao GitHub do candidato, analisa seu portfólio de projetos e a descrição da vaga desejada, e gera automaticamente uma entrevista técnica simulada utilizando inteligência artificial ge...",
   "main": "index.js",
+  "engines": {
+    "node": ">=22.4.0"
+  },
   "scripts": {
     "prepare": "husky",
     "dev:backend": "npm --prefix backend run dev",
@@ -11,7 +14,7 @@
     "build:frontend": "npm --prefix frontend run build",
     "build": "npm run build:backend && npm run build:frontend",
     "lint": "npm --prefix backend run lint && npm --prefix frontend run lint",
-    "test": "npm --prefix backend run test && npm --prefix frontend run test"
+    "test": "npm --prefix backend run test && npm --prefix frontend run test:run"
   },
   "repository": {
     "type": "git",

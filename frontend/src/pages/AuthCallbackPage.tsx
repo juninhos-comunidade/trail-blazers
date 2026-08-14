@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { consumeRedirectAfterLogin } from "../auth/github-oauth";
+import { consumeRedirectAfterLogin, exchangeLoginCode } from "../auth/github-oauth";
 import { useAuth } from "../auth/useAuth";
 import { Spinner } from "../components/ui/Spinner";
 import { paths } from "../routes/paths";
@@ -12,7 +12,7 @@ export function AuthCallbackPage() {
   const navigate = useNavigate();
   const handled = useRef(false);
 
-  const token = searchParams.get("token");
+  const code = searchParams.get("code");
   const error = searchParams.get("error");
 
   useEffect(() => {
@@ -31,18 +31,22 @@ export function AuthCallbackPage() {
       return;
     }
 
-    if (!token) {
+    if (!code) {
       goToLogin("sem_token");
       return;
     }
 
-    if (!signIn(token)) {
-      goToLogin("token_invalido");
-      return;
-    }
+    exchangeLoginCode(code)
+      .then((token) => {
+        if (!signIn(token)) {
+          goToLogin("token_invalido");
+          return;
+        }
 
-    navigate(consumeRedirectAfterLogin() ?? paths.dashboard, { replace: true });
-  }, [error, token, signIn, navigate]);
+        navigate(consumeRedirectAfterLogin() ?? paths.dashboard, { replace: true });
+      })
+      .catch(() => goToLogin("token_invalido"));
+  }, [error, code, signIn, navigate]);
 
   return (
     <div className="flex min-h-screen animate-rise flex-col items-center justify-center gap-5 p-6 text-center">

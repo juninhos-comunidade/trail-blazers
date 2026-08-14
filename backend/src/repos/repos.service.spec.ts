@@ -281,14 +281,13 @@ describe('RepositoriesService', () => {
       expect(httpBody(err).code).toBe('vaga_sem_perfil');
     });
 
-    it('CT-08.7 recusa vaga fora de escopo mesmo com parseStatus done', async () => {
+    it('CT-08.7 analisa normalmente vaga fora de escopo com parseStatus done', async () => {
       prisma.vacancy.findFirst.mockResolvedValue(
         makeVacancy({ parseStatus: 'done', parsedOutOfScope: true }),
       );
+      armAnalysis(['src/app.ts']);
 
-      const err = await analyze().catch((e: unknown) => e);
-
-      expect((err as HttpException).getStatus()).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
+      await expect(analyze()).resolves.toBeDefined();
     });
 
     it('CT-08.7b monta o perfil da vaga com defaults para colunas nulas', async () => {

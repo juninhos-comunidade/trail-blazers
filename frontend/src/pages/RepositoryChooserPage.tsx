@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ReactNode } from "react";
 import { Navigate, useNavigate, useParams, type NavigateFunction } from "react-router-dom";
 
 import { RepositoryList } from "@components/app/RepoList";
 import { ButtonLink, Button } from "@components/ui/Button";
+import { FallbackPanel } from "@components/ui/FallbackPanel";
 import { Spinner } from "@components/ui/Spinner";
-import { cn } from "@lib/cn";
 import {
   clearRepositoryDraft,
   deriveRepositoryDraft,
@@ -57,6 +56,9 @@ function RepositoryChooserForm() {
   const [repositories, setRepositories] = useState<RepoSummary[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [attempt, setAttempt] = useState(0);
+  const [analyzingMessage, setAnalyzingMessage] = useState(
+    "Selecionando arquivos e preparando perguntas...",
+  );
   const navigate: NavigateFunction = useNavigate();
 
   useEffect(() => {
@@ -126,13 +128,17 @@ function RepositoryChooserForm() {
 
     setStatus("analyzing");
     setError(null);
+    setAnalyzingMessage("Selecionando arquivos e preparando perguntas...");
 
     try {
-      const session = await createSession({
-        vacancyId: vacancy.id,
-        owner: selectedRepo.owner,
-        repo: selectedRepo.name,
-      });
+      const session = await createSession(
+        {
+          vacancyId: vacancy.id,
+          owner: selectedRepo.owner,
+          repo: selectedRepo.name,
+        },
+        setAnalyzingMessage,
+      );
 
       writeRepositoryDraft({
         owner: selectedRepo.owner,
@@ -156,19 +162,20 @@ function RepositoryChooserForm() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[860px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto flex min-h-full w-full max-w-[860px] flex-col px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="flex flex-1 flex-col animate-rise">
         <div className="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-end">
-          <div>
+          <div className="w-full min-w-0 sm:w-auto">
             <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
               Quais projetos entram na análise?
             </h1>
             <p className="flex items-center gap-2 text-[15px] text-fg-2">
               <InfoIcon />
               Selecione até {SELECTION_LIMIT}{" "}
-              {SELECTION_LIMIT === 1 ? "repositório" : "repositórios"} para uma
+              {SELECTION_LIMIT === 1 ? "repositório público" : "repositórios públicos"} para uma
               análise mais focada.
             </p>
-            <p className="mt-2 max-w-[62ch] truncate font-mono text-[11.5px] text-fg-muted">
+            <p className="mt-2 max-w-full truncate font-mono text-[11.5px] text-fg-muted sm:max-w-[62ch]">
               Vaga #{vacancy.id.slice(0, 8)} · {vacancy.description}
             </p>
           </div>
@@ -193,7 +200,11 @@ function RepositoryChooserForm() {
         {status === "error" && error && (
           <FallbackPanel
             tone="danger"
-            title="Não conseguimos buscar seus repositórios"
+            title={
+              error instanceof InterviewError
+                ? "Não conseguimos preparar a entrevista"
+                : "Não conseguimos buscar seus repositórios"
+            }
             detail={error.detail}
             hint={error.hint}
             action={
@@ -208,9 +219,9 @@ function RepositoryChooserForm() {
 
         {status === "success" && !hasRepositories && (
           <FallbackPanel
-            title="Nenhum repositório encontrado"
-            detail="Não achamos repositórios nesta conta do GitHub."
-            hint="Se você acabou de criar algum, atualize a lista."
+            title="Nenhum repositório público encontrado"
+            detail="Não achamos repositórios públicos nesta conta do GitHub."
+            hint="Repositórios privados não aparecem aqui — por enquanto só analisamos repositórios públicos. Se você acabou de criar ou tornar um público, atualize a lista."
             action={
               <Button variant="secondary" onClick={retry}>
                 Atualizar lista
@@ -220,10 +231,13 @@ function RepositoryChooserForm() {
         )}
 
         {status === "analyzing" && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Spinner label="Selecionando arquivos e preparando perguntas..." />
-            <p className="text-[14.5px] text-fg-2 font-mono">
-              Pode levar até um minuto — a IA está lendo o repositório e montando a entrevista.
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+            <Spinner label={analyzingMessage} />
+            <p
+              aria-live="polite"
+              className="max-w-[42ch] text-[14.5px] text-fg-2 font-mono [overflow-wrap:anywhere]"
+            >
+              {analyzingMessage}
             </p>
           </div>
         )}
@@ -236,16 +250,22 @@ function RepositoryChooserForm() {
             onToggle={toggle}
           />
         )}
+      </div>
 
-        <div className="mt-9 flex flex-wrap justify-between gap-3">
-          <ButtonLink to={paths.newInterview} variant="ghost" disabled={status === "analyzing"}>
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-9 lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mx-auto flex w-full max-w-[860px] flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-between">
+          <ButtonLink
+            to={paths.newInterview}
+            variant="secondary"
+            disabled={status === "analyzing"}
+            className="w-full lg:w-auto"
+          >
             ← Voltar
           </ButtonLink>
 
           <Button
-            variant="ember"
             disabled={status === "analyzing" || (!offerSkip && !canStart)}
-            className="max-sm:w-full"
+            className="w-full lg:w-auto"
             onClick={offerSkip ? skipRepositories : startInterview}
           >
             {status === "analyzing"
@@ -255,11 +275,11 @@ function RepositoryChooserForm() {
                 : "Iniciar entrevista →"}
           </Button>
         </div>
+      </div>
     </main>
   );
 }
 
-/** Revisão somente-leitura do repositório escolhido numa sessão já existente. */
 function RepositoryReviewView({ sessionId }: { sessionId: string }) {
   const [repository, setRepository] = useState<RepositoryDraft | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -289,7 +309,8 @@ function RepositoryReviewView({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   return (
-    <main className="mx-auto w-full max-w-[860px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto w-full max-w-[860px] px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="animate-rise">
         <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
           Repositório usado nesta entrevista
         </h1>
@@ -342,64 +363,19 @@ function RepositoryReviewView({ sessionId }: { sessionId: string }) {
           </div>
         )}
 
-        <div className="mt-9 flex flex-wrap justify-between gap-3">
-          <ButtonLink to={paths.dashboard} variant="ghost">
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-9 lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mx-auto flex w-full max-w-[860px] flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-between">
+          <ButtonLink to={paths.dashboard} variant="secondary" className="w-full lg:w-auto">
             ← Voltar ao dashboard
           </ButtonLink>
 
-          <ButtonLink to={interviewPath(sessionId)} className="max-sm:w-full">
+          <ButtonLink to={interviewPath(sessionId)} className="w-full lg:w-auto">
             Ir para a entrevista →
           </ButtonLink>
         </div>
+      </div>
     </main>
-  );
-}
-
-interface FallbackPanelProps {
-  title: string;
-  detail: string;
-  hint?: string;
-  tone?: "neutral" | "danger";
-  action?: ReactNode;
-}
-
-function FallbackPanel({
-  title,
-  detail,
-  hint,
-  tone = "neutral",
-  action,
-}: FallbackPanelProps) {
-  return (
-    <div
-      role={tone === "danger" ? "alert" : undefined}
-      className={cn(
-        "flex flex-col items-center gap-3 rounded-lg border border-dashed px-5 py-12 text-center sm:px-6 sm:py-14",
-        tone === "danger"
-          ? "border-[--alpha(var(--color-danger)/45%)] bg-[--alpha(var(--color-danger)/8%)]"
-          : "border-border bg-surface",
-      )}
-    >
-      <h2
-        className={cn(
-          "font-display text-[1.15rem] font-semibold",
-          tone === "danger" && "text-danger",
-        )}
-      >
-        {title}
-      </h2>
-
-      <p className="max-w-[46ch] text-[14.5px] leading-[1.55] text-fg-2">
-        {detail}
-      </p>
-
-      {hint && (
-        <p className="max-w-[46ch] font-mono text-[11.5px] text-fg-muted">
-          {hint}
-        </p>
-      )}
-
-      {action && <div className="mt-1">{action}</div>}
-    </div>
   );
 }

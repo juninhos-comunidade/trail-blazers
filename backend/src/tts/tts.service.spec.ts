@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { ServiceUnavailableException } from '@nestjs/common';
-import { TtsService } from './tts.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { TtsService, TtsUnavailableError } from './tts.service';
 import { SpeakSchema } from './tts.schema';
 
-const API_KEY = 'sk_elevenlabs';
-const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+const API_KEY = 'azure_key';
+const REGION = 'brazilsouth';
+const DEFAULT_VOICE = 'pt-BR-FranciscaNeural';
 
 const audioOk = (bytes: number[]) => ({
   ok: true,
@@ -25,6 +26,7 @@ const timeoutError = () =>
 
 describe('TtsService', () => {
   let fetchMock: jest.Mock;
+  let cache: { get: jest.Mock; set: jest.Mock };
 
   const build = async (env: Record<string, string | undefined>) => {
     const config = {
@@ -32,7 +34,11 @@ describe('TtsService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TtsService, { provide: ConfigService, useValue: config }],
+      providers: [
+        TtsService,
+        { provide: ConfigService, useValue: config },
+        { provide: CACHE_MANAGER, useValue: cache },
+      ],
     }).compile();
 
     return module.get(TtsService);
@@ -41,6 +47,7 @@ describe('TtsService', () => {
   beforeEach(() => {
     fetchMock = jest.fn();
     global.fetch = fetchMock;
+    cache = { get: jest.fn().mockResolvedValue(undefined), set: jest.fn() };
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
@@ -48,15 +55,28 @@ describe('TtsService', () => {
     jest.restoreAllMocks();
   });
 
-  it('CT-16.1 sinaliza 503 sem chave configurada, sem chamar a ElevenLabs', async () => {
-    const service = await build({ ELEVENLABS_API_KEY: undefined });
+  it('CT-16.1 sinaliza not_configured sem chave, sem chamar o Azure Speech', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: undefined, AZURE_SPEECH_REGION: REGION });
 
-    await expect(service.synthesize('olá')).rejects.toThrow(ServiceUnavailableException);
+    const err = await service.synthesize('olá').catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(TtsUnavailableError);
+    expect((err as TtsUnavailableError).reason).toBe('not_configured');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('CT-16.1b sinaliza not_configured sem região, mesmo com chave', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: undefined });
+
+    const err = await service.synthesize('olá').catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(TtsUnavailableError);
+    expect((err as TtsUnavailableError).reason).toBe('not_configured');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('CT-16.2 devolve o áudio como Buffer', async () => {
-    const service = await build({ ELEVENLABS_API_KEY: API_KEY });
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
     fetchMock.mockResolvedValue(audioOk([1, 2, 3]));
 
     const audio = await service.synthesize('olá');
@@ -65,8 +85,47 @@ describe('TtsService', () => {
     expect([...audio]).toEqual([1, 2, 3]);
   });
 
-  it('CT-16.3 autentica com xi-api-key e usa a voz configurada', async () => {
-    const service = await build({ ELEVENLABS_API_KEY: API_KEY, ELEVENLABS_VOICE_ID: 'voz-custom' });
+  it('CT-16.2b guarda o áudio sintetizado no cache', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
+    fetchMock.mockResolvedValue(audioOk([1, 2, 3]));
+
+    const audio = await service.synthesize('olá');
+
+    expect(cache.set).toHaveBeenCalledTimes(1);
+    const [key, cachedValue] = cache.set.mock.calls[0] as [string, Buffer];
+    expect(key).toMatch(/^tts_audio_/);
+    expect(cachedValue).toBe(audio);
+  });
+
+  it('CT-16.2c com o áudio em cache, devolve direto e não chama a Azure nem exige configuração', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: undefined, AZURE_SPEECH_REGION: undefined });
+    const cachedAudio = Buffer.from([9, 9, 9]);
+    cache.get.mockResolvedValue(cachedAudio);
+
+    const audio = await service.synthesize('já falado antes');
+
+    expect(audio).toBe(cachedAudio);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('CT-16.2d textos diferentes geram chaves de cache diferentes', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
+    fetchMock.mockResolvedValue(audioOk([1]));
+
+    await service.synthesize('primeiro texto');
+    await service.synthesize('segundo texto');
+
+    const [firstKey] = cache.set.mock.calls[0] as [string];
+    const [secondKey] = cache.set.mock.calls[1] as [string];
+    expect(firstKey).not.toBe(secondKey);
+  });
+
+  it('CT-16.3 autentica com Ocp-Apim-Subscription-Key e usa a voz configurada', async () => {
+    const service = await build({
+      AZURE_SPEECH_KEY: API_KEY,
+      AZURE_SPEECH_REGION: REGION,
+      AZURE_SPEECH_VOICE: 'pt-BR-AntonioNeural',
+    });
     fetchMock.mockResolvedValue(audioOk([1]));
 
     await service.synthesize('texto da pergunta');
@@ -75,23 +134,32 @@ describe('TtsService', () => {
       string,
       { headers: Record<string, string>; body: string; method: string },
     ];
-    expect(url).toBe('https://api.elevenlabs.io/v1/text-to-speech/voz-custom');
+    expect(url).toBe(`https://${REGION}.tts.speech.microsoft.com/cognitiveservices/v1`);
     expect(init.method).toBe('POST');
-    expect(init.headers['xi-api-key']).toBe(API_KEY);
-    expect(JSON.parse(init.body)).toMatchObject({
-      text: 'texto da pergunta',
-      model_id: 'eleven_multilingual_v2',
-    });
+    expect(init.headers['Ocp-Apim-Subscription-Key']).toBe(API_KEY);
+    expect(init.body).toContain('texto da pergunta');
+    expect(init.body).toContain('pt-BR-AntonioNeural');
   });
 
-  it('CT-16.4 cai para a voz padrão sem ELEVENLABS_VOICE_ID', async () => {
-    const service = await build({ ELEVENLABS_API_KEY: API_KEY });
+  it('CT-16.4 cai para a voz padrão sem AZURE_SPEECH_VOICE', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
     fetchMock.mockResolvedValue(audioOk([1]));
 
     await service.synthesize('olá');
 
-    const [url] = fetchMock.mock.calls[0] as [string];
-    expect(url).toContain(DEFAULT_VOICE_ID);
+    const [, init] = fetchMock.mock.calls[0] as [string, { body: string }];
+    expect(init.body).toContain(DEFAULT_VOICE);
+  });
+
+  it('CT-16.4b escapa caracteres especiais de SSML no texto', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
+    fetchMock.mockResolvedValue(audioOk([1]));
+
+    await service.synthesize('<b>"João" & Cia</b>');
+
+    const [, init] = fetchMock.mock.calls[0] as [string, { body: string }];
+    expect(init.body).not.toContain('<b>');
+    expect(init.body).toContain('&amp;');
   });
 
   it.each([
@@ -100,43 +168,59 @@ describe('TtsService', () => {
       'erro embrulhado em cause',
       Object.assign(new Error('fetch failed'), { cause: timeoutError() }),
     ],
-  ])('CT-16.5 traduz timeout (%s) em 503', async (_caso, erro) => {
-    const service = await build({ ELEVENLABS_API_KEY: API_KEY });
+  ])('CT-16.5 traduz timeout (%s) em unavailable', async (_caso, erro) => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
     fetchMock.mockRejectedValue(erro);
 
-    await expect(service.synthesize('olá')).rejects.toThrow(ServiceUnavailableException);
+    const err = await service.synthesize('olá').catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(TtsUnavailableError);
+    expect((err as TtsUnavailableError).reason).toBe('unavailable');
   });
 
-  it('CT-16.6 traduz erro de rede em 503', async () => {
-    const service = await build({ ELEVENLABS_API_KEY: API_KEY });
+  it('CT-16.6 traduz erro de rede em unavailable', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
     fetchMock.mockRejectedValue(new Error('ECONNREFUSED'));
 
-    await expect(service.synthesize('olá')).rejects.toThrow(ServiceUnavailableException);
+    const err = await service.synthesize('olá').catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(TtsUnavailableError);
+    expect((err as TtsUnavailableError).reason).toBe('unavailable');
   });
 
-  it.each([401, 429, 500])(
-    'CT-16.7 traduz %s em 503 sem repassar o corpo da ElevenLabs',
+  it('CT-16.7 traduz 429 em rate_limited (limite de concorrência do tier F0)', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
+    fetchMock.mockResolvedValue(httpErr(429));
+
+    const err = await service.synthesize('olá').catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(TtsUnavailableError);
+    expect((err as TtsUnavailableError).reason).toBe('rate_limited');
+  });
+
+  it.each([401, 500])(
+    'CT-16.7b traduz %s em unavailable sem repassar o corpo do Azure',
     async (status) => {
-      const service = await build({ ELEVENLABS_API_KEY: API_KEY });
+      const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
       fetchMock.mockResolvedValue(httpErr(status));
 
       const err = await service.synthesize('olá').catch((e: unknown) => e);
 
-      expect(err).toBeInstanceOf(ServiceUnavailableException);
-      expect((err as Error).message).toBe('Não foi possível gerar áudio agora.');
+      expect(err).toBeInstanceOf(TtsUnavailableError);
+      expect((err as TtsUnavailableError).reason).toBe('unavailable');
       expect((err as Error).message).not.toContain('quota_exceeded');
     },
   );
 
-  it('CT-16.7b tolera corpo de erro ilegível', async () => {
-    const service = await build({ ELEVENLABS_API_KEY: API_KEY });
+  it('CT-16.7c tolera corpo de erro ilegível', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
     fetchMock.mockResolvedValue({
       ok: false,
       status: 500,
       text: () => Promise.reject(new Error('stream quebrado')),
     });
 
-    await expect(service.synthesize('olá')).rejects.toThrow(ServiceUnavailableException);
+    await expect(service.synthesize('olá')).rejects.toBeInstanceOf(TtsUnavailableError);
   });
 
   describe('SpeakSchema', () => {

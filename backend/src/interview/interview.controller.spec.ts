@@ -17,6 +17,7 @@ describe('InterviewController', () => {
   beforeEach(async () => {
     sessions = {
       create: jest.fn().mockResolvedValue({ id: SESSION_ID }),
+      createWithProgress: jest.fn().mockResolvedValue({ id: SESSION_ID }),
       findMany: jest.fn().mockResolvedValue([]),
       findOne: jest.fn().mockResolvedValue({ id: SESSION_ID }),
       submitAnswer: jest.fn().mockResolvedValue({ allAnswered: false }),
@@ -33,11 +34,22 @@ describe('InterviewController', () => {
     controller = module.get(InterviewController);
   });
 
+  const makeRes = () => {
+    const res: Record<string, jest.Mock> = {
+      setHeader: jest.fn(),
+      write: jest.fn(),
+      end: jest.fn(),
+    };
+    res.setHeader.mockReturnValue(res);
+    return res as unknown as { setHeader: jest.Mock; write: jest.Mock; end: jest.Mock };
+  };
+
   it('CT-17.1 🔒 todo handler repassa o id do usuário autenticado ao service', async () => {
     const dto = { vacancyId: UUID, owner: 'candidato', repo: 'projeto', questionCount: 8 };
     const answer = { questionId: UUID, content: 'minha resposta' };
+    const res = makeRes();
 
-    await controller.create(req, dto);
+    await controller.create(req, dto, res as never);
     await controller.findAll(req);
     await controller.findOne(req, SESSION_ID);
     await controller.submitAnswer(req, SESSION_ID, answer);
@@ -45,13 +57,54 @@ describe('InterviewController', () => {
     await controller.getReport(req, SESSION_ID);
     await controller.remove(req, SESSION_ID);
 
-    expect(sessions.create).toHaveBeenCalledWith(USER_ID, dto);
+    expect(sessions.createWithProgress).toHaveBeenCalledWith(USER_ID, dto, expect.any(Function));
     expect(sessions.findMany).toHaveBeenCalledWith(USER_ID);
     expect(sessions.findOne).toHaveBeenCalledWith(USER_ID, SESSION_ID);
     expect(sessions.submitAnswer).toHaveBeenCalledWith(USER_ID, SESSION_ID, answer);
     expect(sessions.generateReport).toHaveBeenCalledWith(USER_ID, SESSION_ID);
     expect(sessions.getReport).toHaveBeenCalledWith(USER_ID, SESSION_ID);
     expect(sessions.remove).toHaveBeenCalledWith(USER_ID, SESSION_ID);
+  });
+
+  it('CT-17.1b streama progresso e resultado em NDJSON e encerra a resposta', async () => {
+    const dto = { vacancyId: UUID, owner: 'candidato', repo: 'projeto', questionCount: 8 };
+    const res = makeRes();
+    sessions.createWithProgress.mockImplementation(
+      (_userId: string, _dto: unknown, onProgress: (message: string) => void) => {
+        onProgress('Buscando arquivos...');
+        return Promise.resolve({ id: SESSION_ID });
+      },
+    );
+
+    await controller.create(req, dto, res as never);
+
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'Content-Type',
+      'application/x-ndjson; charset=utf-8',
+    );
+    expect(res.write).toHaveBeenCalledWith(
+      `${JSON.stringify({ type: 'progress', message: 'Buscando arquivos...' })}\n`,
+    );
+    expect(res.write).toHaveBeenCalledWith(
+      `${JSON.stringify({ type: 'result', session: { id: SESSION_ID } })}\n`,
+    );
+    expect(res.end).toHaveBeenCalled();
+  });
+
+  it('CT-17.1c streama um evento de erro quando o service falha', async () => {
+    const dto = { vacancyId: UUID, owner: 'candidato', repo: 'projeto', questionCount: 8 };
+    const res = makeRes();
+    sessions.createWithProgress.mockRejectedValue(new NotFoundException('Vaga não encontrada.'));
+
+    await controller.create(req, dto, res as never);
+
+    const [[payload]] = res.write.mock.calls as [[string]];
+    const event = JSON.parse(payload) as { type: string; status: number; message: string };
+
+    expect(event.type).toBe('error');
+    expect(event.status).toBe(404);
+    expect(event.message).toBe('Vaga não encontrada.');
+    expect(res.end).toHaveBeenCalled();
   });
 
   it('CT-17.2 devolve 404 quando o relatório ainda não existe', async () => {

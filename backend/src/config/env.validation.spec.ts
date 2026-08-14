@@ -27,6 +27,19 @@ describe('envValidationSchema', () => {
     expect(value.FRONTEND_URL).toBe('http://localhost:3001');
   });
 
+  it('aplica default 0 para os preços de IA quando não configurados', () => {
+    const { value } = validate(validEnv) as { value: Record<string, unknown> };
+
+    expect(value.AI_PRICE_PER_1M_INPUT_TOKENS).toBe(0);
+    expect(value.AI_PRICE_PER_1M_OUTPUT_TOKENS).toBe(0);
+  });
+
+  it('rejeita preço de IA negativo', () => {
+    const { error } = validate({ ...validEnv, AI_PRICE_PER_1M_INPUT_TOKENS: -1 });
+
+    expect(error).toBeDefined();
+  });
+
   describe.each([
     ['DATABASE_URL', 'DATABASE_URL é obrigatória'],
     ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_ID é obrigatória'],

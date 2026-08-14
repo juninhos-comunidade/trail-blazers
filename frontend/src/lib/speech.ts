@@ -1,4 +1,4 @@
-import { synthesizeSpeech } from "./tts-api";
+import { synthesizeSpeech, TtsError, type TtsFailureReason } from "./tts-api";
 
 interface SpeechRecognitionResultLike {
   isFinal: boolean;
@@ -91,8 +91,6 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
       resolve(synth.getVoices());
     };
     synth.addEventListener("voiceschanged", onVoicesChanged);
-    // Alguns navegadores nunca disparam o evento se as vozes já estavam
-    // prontas antes do listener ser anexado — não trava esperando para sempre.
     setTimeout(() => {
       synth.removeEventListener("voiceschanged", onVoicesChanged);
       resolve(synth.getVoices());
@@ -100,12 +98,6 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
-/**
- * Vozes "de rede" (`localService: false`, ex. as vozes Google do Chrome) são
- * tipicamente bem mais naturais que as vozes locais (ex. espeak-ng no Linux).
- * Entre as vozes do idioma pedido, prioriza: rede > nome bate exatamente com
- * `lang` > primeira que casar o prefixo do idioma.
- */
 function pickBestVoice(voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesisVoice | null {
   const prefix = lang.split("-")[0];
   const candidates = voices.filter((voice) => voice.lang.toLowerCase().startsWith(prefix));
@@ -144,18 +136,44 @@ function stopCurrentAudio(): void {
   currentAudio = null;
 }
 
-/**
- * Fala um texto com a voz mais humana disponível: primeiro tenta o TTS do
- * backend (ElevenLabs), que soa igual em qualquer navegador; se a chamada
- * falhar (sem cota, sem chave configurada, sem rede), cai para a Web Speech
- * API do próprio navegador — nunca fica sem voz nenhuma.
- */
-export async function speak(text: string, { lang = "pt-BR" }: { lang?: string } = {}): Promise<void> {
+let latestSpeakToken = 0;
+
+export type SpeechStatus =
+  | { source: "server" }
+  | { source: "browser"; reason: TtsFailureReason }
+  | { source: "none"; reason: TtsFailureReason };
+
+const FALLBACK_MESSAGES: Record<TtsFailureReason, string> = {
+  not_configured: "Leitura de voz do servidor não configurada",
+  rate_limited: "Leitor de voz do servidor ocupado com outra entrevista agora",
+  unavailable: "Leitor de voz do servidor indisponível no momento",
+  network_error: "Não foi possível conectar ao leitor de voz do servidor",
+  unknown: "Leitor de voz do servidor falhou",
+};
+
+export function describeSpeechStatus(status: SpeechStatus): string | null {
+  if (status.source === "server") return null;
+
+  const base = FALLBACK_MESSAGES[status.reason];
+  return status.source === "browser"
+    ? `${base} — usando a voz do navegador.`
+    : `${base}, e este navegador não tem leitura de voz embutida.`;
+}
+
+export async function speak(
+  text: string,
+  { lang = "pt-BR", onStatus }: { lang?: string; onStatus?: (status: SpeechStatus) => void } = {},
+): Promise<void> {
+  const myToken = ++latestSpeakToken;
+  const isStale = () => myToken !== latestSpeakToken;
+
   stopCurrentAudio();
   if (isSpeechSynthesisSupported()) window.speechSynthesis.cancel();
 
   try {
     const blob = await synthesizeSpeech(text);
+    if (isStale()) return;
+
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
 
@@ -163,11 +181,24 @@ export async function speak(text: string, { lang = "pt-BR" }: { lang?: string } 
     currentAudio = audio;
 
     await audio.play();
+    if (isStale()) return;
+
+    onStatus?.({ source: "server" });
     return;
-  } catch {
-    // Servidor sem TTS configurado, sem cota, ou sem rede — cai para o navegador.
+  } catch (err) {
+    if (isStale()) return;
+
+    const reason = err instanceof TtsError ? err.reason : "unknown";
+
+    if (!isSpeechSynthesisSupported()) {
+      onStatus?.({ source: "none", reason });
+      return;
+    }
+
+    onStatus?.({ source: "browser", reason });
   }
 
+  if (isStale()) return;
   await speakWithBrowser(text, { lang });
 }
 
