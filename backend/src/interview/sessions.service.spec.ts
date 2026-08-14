@@ -208,15 +208,15 @@ describe('SessionsService', () => {
       expect(httpBody(err).code).toBe('vaga_sem_perfil');
     });
 
-    it('CT-12.4 recusa vaga fora de escopo mesmo com parseStatus done', async () => {
+    it('CT-12.4 cria a sessão normalmente para vaga fora de escopo com parseStatus done', async () => {
+      armCreate();
       prisma.vacancy.findFirst.mockResolvedValue(
         makeVacancy({ parseStatus: 'done', parsedOutOfScope: true }),
       );
 
-      const err = await service.create(USER_ID, CREATE_DTO).catch((e: unknown) => e);
+      const result = await service.create(USER_ID, CREATE_DTO);
 
-      expect((err as HttpException).getStatus()).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
-      expect(httpBody(err).code).toBe('vaga_sem_perfil');
+      expect(result.status).toBe('in_progress');
     });
 
     it('CT-12.5 cria a sessão com status in_progress', async () => {

@@ -601,7 +601,7 @@ function VacancyProfileSummary({
                 {profile.technologies.map((technology) => (
                   <span
                     key={technology}
-                    className="rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
+                    className="max-w-full rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text [overflow-wrap:anywhere]"
                   >
                     {technology}
                   </span>
@@ -615,7 +615,7 @@ function VacancyProfileSummary({
               <dt className="mb-1.5 font-mono text-[11.5px] text-fg-muted">
                 Competências-chave
               </dt>
-              <dd className="text-[14px] leading-[1.6] text-fg-2">
+              <dd className="text-[14px] leading-[1.6] text-fg-2 [overflow-wrap:anywhere]">
                 {profile.keyCompetencies.join(" · ")}
               </dd>
             </div>
@@ -733,15 +733,15 @@ function TagListEditor({
           {values.map((value) => (
             <span
               key={value}
-              className="flex items-center gap-1.5 rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
+              className="flex max-w-full items-center gap-1.5 rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
             >
-              {value}
+              <span className="[overflow-wrap:anywhere]">{value}</span>
               <button
                 type="button"
                 onClick={() => remove(value)}
                 disabled={disabled}
                 aria-label={`Remover ${value}`}
-                className="text-trail-text/70 transition-colors duration-200 hover:text-trail-text disabled:opacity-60"
+                className="flex-none text-trail-text/70 transition-colors duration-200 hover:text-trail-text disabled:opacity-60"
               >
                 ×
               </button>

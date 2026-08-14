@@ -167,16 +167,84 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 }
 
-export async function createSession(params: {
-  vacancyId: string;
-  owner: string;
-  repo: string;
-  questionCount?: number;
-}): Promise<InterviewSession> {
-  return request<InterviewSession>("/interview/sessions", {
-    method: "POST",
-    body: JSON.stringify(params),
-  });
+type SessionStreamEvent =
+  | { type: "progress"; message: string }
+  | { type: "result"; session: InterviewSession }
+  | { type: "error"; status: number; code?: string; message: string; retryable?: boolean };
+
+/**
+ * A criação de sessão envolve ler o repositório inteiro e duas chamadas de
+ * IA — pode levar dezenas de segundos. O backend responde em NDJSON (uma
+ * linha por evento de progresso, terminando numa linha `result`/`error`) em
+ * vez de um único JSON no fim, para que `onProgress` possa refletir a etapa
+ * real em andamento em vez de um spinner mudo.
+ */
+export async function createSession(
+  params: { vacancyId: string; owner: string; repo: string; questionCount?: number },
+  onProgress?: (message: string) => void,
+): Promise<InterviewSession> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/interview/sessions`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+  } catch {
+    throw new InterviewError("Não conseguimos falar com o servidor do InterviewTrail.", {
+      hint: "Verifique sua conexão e tente de novo.",
+    });
+  }
+
+  if (!response.body || !(response.headers.get("content-type") ?? "").includes("ndjson")) {
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as ErrorBody;
+      throw mapErrorResponse(response.status, body);
+    }
+    return (await response.json()) as InterviewSession;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: InterviewSession | null = null;
+  let errorEvent: Extract<SessionStreamEvent, { type: "error" }> | null = null;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex = buffer.indexOf("\n");
+    while (newlineIndex !== -1) {
+      const line = buffer.slice(0, newlineIndex).trim();
+      buffer = buffer.slice(newlineIndex + 1);
+      newlineIndex = buffer.indexOf("\n");
+      if (!line) continue;
+
+      const event = JSON.parse(line) as SessionStreamEvent;
+      if (event.type === "progress") onProgress?.(event.message);
+      else if (event.type === "result") result = event.session;
+      else errorEvent = event;
+    }
+  }
+
+  if (errorEvent) {
+    throw mapErrorResponse(errorEvent.status, {
+      code: errorEvent.code,
+      message: errorEvent.message,
+      retryable: errorEvent.retryable,
+    });
+  }
+
+  if (!result) {
+    throw new InterviewError("O servidor encerrou a conexão antes de terminar.", {
+      hint: "Tente novamente.",
+    });
+  }
+
+  return result;
 }
 
 export async function listSessions(): Promise<InterviewSessionSummary[]> {

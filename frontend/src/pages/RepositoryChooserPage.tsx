@@ -57,6 +57,9 @@ function RepositoryChooserForm() {
   const [repositories, setRepositories] = useState<RepoSummary[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [attempt, setAttempt] = useState(0);
+  const [analyzingMessage, setAnalyzingMessage] = useState(
+    "Selecionando arquivos e preparando perguntas...",
+  );
   const navigate: NavigateFunction = useNavigate();
 
   useEffect(() => {
@@ -126,13 +129,17 @@ function RepositoryChooserForm() {
 
     setStatus("analyzing");
     setError(null);
+    setAnalyzingMessage("Selecionando arquivos e preparando perguntas...");
 
     try {
-      const session = await createSession({
-        vacancyId: vacancy.id,
-        owner: selectedRepo.owner,
-        repo: selectedRepo.name,
-      });
+      const session = await createSession(
+        {
+          vacancyId: vacancy.id,
+          owner: selectedRepo.owner,
+          repo: selectedRepo.name,
+        },
+        setAnalyzingMessage,
+      );
 
       writeRepositoryDraft({
         owner: selectedRepo.owner,
@@ -156,7 +163,7 @@ function RepositoryChooserForm() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[860px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto flex min-h-full w-full max-w-[860px] animate-rise flex-col px-4 pb-14 sm:px-6 sm:pb-18">
         <div className="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="w-full min-w-0 sm:w-auto">
             <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
@@ -193,7 +200,11 @@ function RepositoryChooserForm() {
         {status === "error" && error && (
           <FallbackPanel
             tone="danger"
-            title="Não conseguimos buscar seus repositórios"
+            title={
+              error instanceof InterviewError
+                ? "Não conseguimos preparar a entrevista"
+                : "Não conseguimos buscar seus repositórios"
+            }
             detail={error.detail}
             hint={error.hint}
             action={
@@ -220,10 +231,13 @@ function RepositoryChooserForm() {
         )}
 
         {status === "analyzing" && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Spinner label="Selecionando arquivos e preparando perguntas..." />
-            <p className="text-[14.5px] text-fg-2 font-mono">
-              Pode levar até um minuto — a IA está lendo o repositório e montando a entrevista.
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+            <Spinner label={analyzingMessage} />
+            <p
+              aria-live="polite"
+              className="max-w-[42ch] text-[14.5px] text-fg-2 font-mono [overflow-wrap:anywhere]"
+            >
+              {analyzingMessage}
             </p>
           </div>
         )}

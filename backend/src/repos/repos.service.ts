@@ -49,6 +49,8 @@ export interface ProcessedRepository {
   totalTokensEstimative: number;
 }
 
+export type AnalysisProgress = (message: string) => void;
+
 type file = { path: string; content: string };
 
 interface GithubRepoResponse {
@@ -152,6 +154,7 @@ export class RepositoriesService {
     owner: string,
     repo: string,
     vacancyId: string,
+    onProgress: AnalysisProgress = () => {},
   ): Promise<ProcessedRepository> {
     if (!vacancyId) {
       throw new HttpException(
@@ -168,6 +171,7 @@ export class RepositoriesService {
     const cachedData = await this.cacheManager.get<ProcessedRepository>(cacheKey);
     if (cachedData) {
       console.log(`\n[CACHE] Servindo análise do repositório ${owner}/${repo}.`);
+      onProgress('Reaproveitando uma análise recente deste repositório...');
       return cachedData;
     }
 
@@ -180,6 +184,8 @@ export class RepositoriesService {
 
     const token = await this.usersService.getGithubToken(userId);
     if (!token) throw new UnauthorizedException('Token do GitHub não encontrado.');
+
+    onProgress('Buscando a lista de arquivos do repositório no GitHub...');
 
     const treeResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`,
@@ -211,6 +217,10 @@ export class RepositoriesService {
       );
     }
 
+    onProgress(
+      `Selecionando os arquivos mais relevantes para a vaga entre ${candidatePaths.length} encontrados (IA)...`,
+    );
+
     try {
       candidatePaths = await this.fileSelector.selectRelevantFiles(candidatePaths, {
         rawDescription: vacancy.rawDescription,
@@ -226,15 +236,19 @@ export class RepositoriesService {
       );
     }
 
+    onProgress(`Baixando o conteúdo de ${candidatePaths.length} arquivo(s) selecionado(s)...`);
+
     const relevantFiles: file[] = [];
     const omittedFiles: string[] = [];
     let currentCharCount = 0;
 
-    for (const path of candidatePaths) {
+    for (const [index, path] of candidatePaths.entries()) {
       if (currentCharCount >= MAX_CONTEXT_CHARS) {
         omittedFiles.push(path);
         continue;
       }
+
+      onProgress(`Lendo ${path} (${index + 1}/${candidatePaths.length})...`);
 
       const content = await this.fetchFileRawContent(owner, repo, path, token);
 
@@ -283,7 +297,7 @@ export class RepositoriesService {
       );
     }
 
-    if (vacancy.parseStatus === 'failed' || vacancy.parsedOutOfScope) {
+    if (vacancy.parseStatus === 'failed') {
       throw new HttpException(
         {
           code: 'vaga_sem_perfil',

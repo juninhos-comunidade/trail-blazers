@@ -21,6 +21,14 @@ export class SessionsService {
   ) {}
 
   async create(userId: string, dto: CreateSessionDto) {
+    return this.createWithProgress(userId, dto, () => {});
+  }
+
+  async createWithProgress(
+    userId: string,
+    dto: CreateSessionDto,
+    onProgress: (message: string) => void,
+  ) {
     const vacancy = await this.prisma.vacancy.findFirst({
       where: { id: dto.vacancyId, userId },
     });
@@ -36,7 +44,7 @@ export class SessionsService {
       );
     }
 
-    if (vacancy.parseStatus === 'failed' || vacancy.parsedOutOfScope) {
+    if (vacancy.parseStatus === 'failed') {
       throw new HttpException(
         {
           code: 'vaga_sem_perfil',
@@ -61,6 +69,7 @@ export class SessionsService {
       dto.owner,
       dto.repo,
       dto.vacancyId,
+      onProgress,
     );
 
     let questions;
@@ -70,6 +79,7 @@ export class SessionsService {
         profile,
         files: analysis.relevantFiles,
         count: dto.questionCount,
+        onProgress,
       });
     } catch (err) {
       throw this.mapAiError(err, 'ia_indisponivel_perguntas');
@@ -79,6 +89,8 @@ export class SessionsService {
       vacancy.rawDescription.length +
       analysis.relevantFiles.reduce((sum, file) => sum + file.content.length, 0);
     const estimatedOutputChars = questions.reduce((sum, q) => sum + q.content.length, 0);
+
+    onProgress('Salvando a sessão da entrevista...');
 
     const session = await this.prisma.$transaction(async (tx) => {
       const created = await tx.session.create({
