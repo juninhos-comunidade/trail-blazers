@@ -141,7 +141,8 @@ export function ReportPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[920px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto w-full max-w-[920px] px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="animate-rise">
         {error && (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[--alpha(var(--color-danger)/45%)] bg-[--alpha(var(--color-danger)/8%)] px-5 py-12 text-center">
             <p className="text-[15px] text-fg-2">{error.detail}</p>
@@ -190,20 +191,25 @@ export function ReportPage() {
               </Card>
             </div>
 
-            <div className="mt-10 flex flex-col-reverse items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-              <ButtonLink to={paths.newInterview} className="max-sm:w-full">
-                Nova entrevista
-              </ButtonLink>
-              <ButtonLink to={paths.dashboard} variant="secondary" className="max-sm:w-full">
-                Voltar ao dashboard
-              </ButtonLink>
-            </div>
-
             <p className="mt-7 text-center font-mono text-xs text-fg-muted">
               Sem pressão. Só clareza.
             </p>
           </>
         )}
+      </div>
+
+      {!error && report && (
+        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-10 lg:border-0 lg:bg-transparent lg:p-0">
+          <div className="mx-auto flex w-full max-w-[920px] flex-col-reverse gap-3 lg:flex-row lg:flex-wrap lg:justify-center">
+            <ButtonLink to={paths.newInterview} className="w-full lg:w-auto">
+              Nova entrevista
+            </ButtonLink>
+            <ButtonLink to={paths.dashboard} variant="secondary" className="w-full lg:w-auto">
+              Voltar ao dashboard
+            </ButtonLink>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

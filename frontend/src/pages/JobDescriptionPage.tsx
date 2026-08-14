@@ -186,7 +186,8 @@ function JobDescriptionForm() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[760px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto w-full max-w-[760px] px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="animate-rise">
       <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
         Sobre qual vaga vamos treinar?
         </h1>
@@ -302,19 +303,23 @@ function JobDescriptionForm() {
           />
         )}
 
-        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-between">
-          <ButtonLink to={paths.dashboard} variant="secondary" className="max-sm:w-full">
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-9 lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mx-auto flex w-full max-w-[760px] flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-between">
+          <ButtonLink to={paths.dashboard} variant="secondary" className="w-full lg:w-auto">
             ← Voltar
           </ButtonLink>
 
           <Button
             onClick={() => navigate(paths.repoChooser)}
             disabled={status !== "saved" && status !== "analyzing"}
-            className="max-sm:w-full"
+            className="w-full lg:w-auto"
           >
             Continuar →
           </Button>
         </div>
+      </div>
     </main>
   );
 }
@@ -353,7 +358,8 @@ function VacancyReviewView({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   return (
-    <main className="mx-auto w-full max-w-[760px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto w-full max-w-[760px] px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="animate-rise">
         <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
           Vaga usada nesta entrevista
         </h1>
@@ -401,16 +407,19 @@ function VacancyReviewView({ sessionId }: { sessionId: string }) {
             )}
           </>
         )}
+      </div>
 
-        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-between">
-          <ButtonLink to={paths.dashboard} variant="secondary" className="max-sm:w-full">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-9 lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mx-auto flex w-full max-w-[760px] flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-between">
+          <ButtonLink to={paths.dashboard} variant="secondary" className="w-full lg:w-auto">
             ← Voltar ao dashboard
           </ButtonLink>
 
-          <ButtonLink to={interviewPath(sessionId)} className="max-sm:w-full">
+          <ButtonLink to={interviewPath(sessionId)} className="w-full lg:w-auto">
             Ir para a entrevista →
           </ButtonLink>
         </div>
+      </div>
     </main>
   );
 }

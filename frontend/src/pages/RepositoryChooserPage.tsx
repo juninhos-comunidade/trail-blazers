@@ -163,7 +163,8 @@ function RepositoryChooserForm() {
   };
 
   return (
-    <main className="mx-auto flex min-h-full w-full max-w-[860px] animate-rise flex-col px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto flex min-h-full w-full max-w-[860px] flex-col px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="flex flex-1 flex-col animate-rise">
         <div className="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="w-full min-w-0 sm:w-auto">
             <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
@@ -250,20 +251,22 @@ function RepositoryChooserForm() {
             onToggle={toggle}
           />
         )}
+      </div>
 
-        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-between">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-9 lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mx-auto flex w-full max-w-[860px] flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-between">
           <ButtonLink
             to={paths.newInterview}
             variant="secondary"
             disabled={status === "analyzing"}
-            className="max-sm:w-full"
+            className="w-full lg:w-auto"
           >
             ← Voltar
           </ButtonLink>
 
           <Button
             disabled={status === "analyzing" || (!offerSkip && !canStart)}
-            className="max-sm:w-full"
+            className="w-full lg:w-auto"
             onClick={offerSkip ? skipRepositories : startInterview}
           >
             {status === "analyzing"
@@ -273,6 +276,7 @@ function RepositoryChooserForm() {
                 : "Iniciar entrevista →"}
           </Button>
         </div>
+      </div>
     </main>
   );
 }
@@ -307,7 +311,8 @@ function RepositoryReviewView({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   return (
-    <main className="mx-auto w-full max-w-[860px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto w-full max-w-[860px] px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="animate-rise">
         <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
           Repositório usado nesta entrevista
         </h1>
@@ -360,15 +365,19 @@ function RepositoryReviewView({ sessionId }: { sessionId: string }) {
           </div>
         )}
 
-        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-between">
-          <ButtonLink to={paths.dashboard} variant="secondary" className="max-sm:w-full">
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-9 lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mx-auto flex w-full max-w-[860px] flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-between">
+          <ButtonLink to={paths.dashboard} variant="secondary" className="w-full lg:w-auto">
             ← Voltar ao dashboard
           </ButtonLink>
 
-          <ButtonLink to={interviewPath(sessionId)} className="max-sm:w-full">
+          <ButtonLink to={interviewPath(sessionId)} className="w-full lg:w-auto">
             Ir para a entrevista →
           </ButtonLink>
         </div>
+      </div>
     </main>
   );
 }
