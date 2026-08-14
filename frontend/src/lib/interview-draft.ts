@@ -35,13 +35,17 @@ function read<T>(key: string, isValid: (value: unknown) => boolean): T | null {
 function write(key: string, value: unknown): void {
   try {
     sessionStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  } catch {
+    // best-effort — sem storage, o rascunho não sobrevive a um reload
+  }
 }
 
 function remove(key: string): void {
   try {
     sessionStorage.removeItem(key);
-  } catch {}
+  } catch {
+    // best-effort — nada a fazer se o storage já está indisponível
+  }
 }
 
 export function readVacancyDraft(): VacancyDraft | null {

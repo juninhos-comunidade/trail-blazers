@@ -6,7 +6,9 @@ export function startGithubOAuth(redirectTo?: string): void {
   if (redirectTo) {
     try {
       sessionStorage.setItem(REDIRECT_STORAGE_KEY, redirectTo);
-    } catch {}
+    } catch {
+      // best-effort — sem storage, só perde o redirect pós-login
+    }
   }
 
   window.location.href = `${API_URL}/auth/github`;

@@ -1,8 +1,8 @@
 name: CI
 
-# Roda os testes (com os thresholds de cobertura de 80%) do backend e do
+# Roda lint + testes (com os thresholds de cobertura de 80%) do backend e do
 # frontend a cada push e pull request. Sem isso, nada além do próprio
-# desenvolvedor local pega uma regressão de testes antes do merge.
+# desenvolvedor local pega uma regressão antes do merge.
 
 on:
   push:
@@ -38,10 +38,7 @@ jobs:
 
       - run: npm ci
       - run: npx prisma generate
-      # `npm run lint` fica de fora por enquanto: há débito de lint
-      # pré-existente (erros de `no-unsafe-assignment` em
-      # report-generator.service.ts) que precisa ser corrigido antes de
-      # torná-lo um gate — ver TROUBLESHOOTING/lint no README.
+      - run: npm run lint
       - run: npm run test:cov
       - run: npm run test:e2e
 
@@ -60,7 +57,5 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
-      # `npm run lint` fica de fora por enquanto: há débito de lint
-      # pré-existente (this-alias em speech.test.ts, blocos vazios) que
-      # precisa ser corrigido antes de torná-lo um gate.
+      - run: npm run lint
       - run: npm run test:coverage

@@ -1,10 +1,15 @@
 import { HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma, type Question, type Session, type SessionRepo } from '@prisma/client';
+import { Prisma, type Question, type Report, type Session, type SessionRepo } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RepositoriesService } from '../repos/repos.service';
 import { ParsedVacancyProfile } from '../vacancies/schemas/vacancy.schema';
-import { CreateSessionDto, SubmitAnswerDto } from './schemas/interview.schema';
+import {
+  AiQuestion,
+  AiReport,
+  CreateSessionDto,
+  SubmitAnswerDto,
+} from './schemas/interview.schema';
 import { QuestionGenerationError, QuestionGeneratorService } from './question-generator.service';
 import { ReportGenerationError, ReportGeneratorService } from './report-generator.service';
 
@@ -74,7 +79,7 @@ export class SessionsService {
       onProgress,
     );
 
-    let questions;
+    let questions: AiQuestion[];
     try {
       questions = await this.questionGenerator.generate({
         rawDescription: vacancy.rawDescription,
@@ -281,7 +286,7 @@ export class SessionsService {
       )
       .map((m) => ({ file: m.codeFile, excerpt: m.codeExcerpt }));
 
-    let report;
+    let report: AiReport;
     try {
       report = await this.reportGenerator.generate({
         rawDescription: session.vacancy.rawDescription,
@@ -301,7 +306,7 @@ export class SessionsService {
       throw this.mapAiError(err, 'ia_indisponivel_relatorio');
     }
 
-    let created;
+    let created: Report;
     try {
       created = await this.prisma.report.create({
         data: {

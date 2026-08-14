@@ -13,7 +13,9 @@ export function readTtsPreference(): boolean {
 export function writeTtsPreference(enabled: boolean): void {
   try {
     localStorage.setItem(TTS_STORAGE_KEY, enabled ? "1" : "0");
-  } catch {}
+  } catch {
+    // best-effort — sem storage, a preferência não persiste entre sessões
+  }
 }
 
 export function useTtsPreference(): [boolean, (enabled: boolean) => void] {

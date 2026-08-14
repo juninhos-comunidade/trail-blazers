@@ -30,7 +30,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.theme = theme;
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {}
+    } catch {
+      // best-effort — sem storage, o tema não persiste entre sessões
+    }
   }, [theme]);
 
   const toggleTheme = useCallback(() => {

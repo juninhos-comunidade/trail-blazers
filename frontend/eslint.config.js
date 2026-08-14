@@ -19,4 +19,15 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Regras de pureza de render (react-hooks/globals), Fast Refresh
+    // (react-refresh) e estilo de produção (no-this-alias) protegem código
+    // de app — não se aplicam a test doubles/mocks nem a infra de teste.
+    files: ['**/*.test.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-this-alias': 'off',
+      'react-refresh/only-export-components': 'off',
+      'react-hooks/globals': 'off',
+    },
+  },
 ])

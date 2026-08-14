@@ -82,7 +82,7 @@ export function InterviewPage() {
     };
   }, [sessionDraft]);
 
-  const questions = session?.questions ?? [];
+  const questions = useMemo(() => session?.questions ?? [], [session]);
   const currentIndex = questions.findIndex((q) => !q.answer);
   const finished = questions.length > 0 && currentIndex === -1;
   const currentQuestion = finished ? undefined : questions[currentIndex];

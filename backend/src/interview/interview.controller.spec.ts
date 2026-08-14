@@ -70,9 +70,9 @@ describe('InterviewController', () => {
     const dto = { vacancyId: UUID, owner: 'candidato', repo: 'projeto', questionCount: 8 };
     const res = makeRes();
     sessions.createWithProgress.mockImplementation(
-      async (_userId: string, _dto: unknown, onProgress: (message: string) => void) => {
+      (_userId: string, _dto: unknown, onProgress: (message: string) => void) => {
         onProgress('Buscando arquivos...');
-        return { id: SESSION_ID };
+        return Promise.resolve({ id: SESSION_ID });
       },
     );
 
