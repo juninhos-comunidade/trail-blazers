@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 
-import { ButtonLink } from "@components/ui/Button";
+import { Button, ButtonLink } from "@components/ui/Button";
 import { CheckIcon } from "@components/ui/icons";
 import { Spinner } from "@components/ui/Spinner";
 import {
@@ -84,53 +84,60 @@ export function ReportPage() {
   const [error, setError] = useState<InterviewError | null>(null);
   const requestedRef = useRef(false);
 
+  const load = useCallback(async () => {
+    if (!sessionDraft) return;
+
+    setError(null);
+
+    try {
+      if (historicalId) {
+        const session = await getSession(historicalId);
+        const vacancyData = await getVacancy(session.vacancyId);
+
+        setVacancy({
+          id: vacancyData.id,
+          description: vacancyData.rawDescription,
+          profile: vacancyData.parsedProfile,
+        });
+        setRepository(deriveRepositoryDraft(session));
+
+        if (session.status === "in_progress") {
+          throw new InterviewError("Esta entrevista ainda tem perguntas sem resposta.", {
+            hint: "Volte para a conversa e responda todas as perguntas antes de ver o relatório.",
+            retryable: false,
+            code: "respostas_pendentes",
+          });
+        }
+
+        const existing = await getReport(historicalId);
+        const result = existing ?? (await generateReport(historicalId));
+        setReport(result);
+        return;
+      }
+
+      const existing = await getReport(sessionDraft.id);
+      const result = existing ?? (await generateReport(sessionDraft.id));
+      setReport(result);
+    } catch (cause: unknown) {
+      if (cause instanceof InterviewError) {
+        setError(cause);
+      } else if (cause instanceof VacancyError) {
+        setError(
+          new InterviewError(cause.detail, { hint: cause.hint, retryable: cause.retryable }),
+        );
+      } else {
+        setError(new InterviewError("Não conseguimos gerar o relatório."));
+      }
+    }
+  }, [sessionDraft, historicalId]);
+
   useEffect(() => {
     if (!sessionDraft || requestedRef.current) return;
     requestedRef.current = true;
+    void load();
+  }, [sessionDraft, load]);
 
-    (async () => {
-      try {
-        if (historicalId) {
-          const session = await getSession(historicalId);
-          const vacancyData = await getVacancy(session.vacancyId);
-
-          setVacancy({
-            id: vacancyData.id,
-            description: vacancyData.rawDescription,
-            profile: vacancyData.parsedProfile,
-          });
-          setRepository(deriveRepositoryDraft(session));
-
-          if (session.status === "in_progress") {
-            throw new InterviewError("Esta entrevista ainda tem perguntas sem resposta.", {
-              hint: "Volte para a conversa e responda todas as perguntas antes de ver o relatório.",
-              retryable: false,
-              code: "respostas_pendentes",
-            });
-          }
-
-          const existing = await getReport(historicalId);
-          const result = existing ?? (await generateReport(historicalId));
-          setReport(result);
-          return;
-        }
-
-        const existing = await getReport(sessionDraft.id);
-        const result = existing ?? (await generateReport(sessionDraft.id));
-        setReport(result);
-      } catch (cause: unknown) {
-        if (cause instanceof InterviewError) {
-          setError(cause);
-        } else if (cause instanceof VacancyError) {
-          setError(
-            new InterviewError(cause.detail, { hint: cause.hint, retryable: cause.retryable }),
-          );
-        } else {
-          setError(new InterviewError("Não conseguimos gerar o relatório."));
-        }
-      }
-    })();
-  }, [sessionDraft, historicalId]);
+  const retry = () => void load();
 
   if (!historicalId && (!vacancy || !sessionDraft)) {
     return <Navigate to={paths.newInterview} replace />;
@@ -147,9 +154,12 @@ export function ReportPage() {
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[--alpha(var(--color-danger)/45%)] bg-[--alpha(var(--color-danger)/8%)] px-5 py-12 text-center">
             <p className="text-[15px] text-fg-2">{error.detail}</p>
             {error.hint && <p className="font-mono text-[12.5px] text-fg-muted">{error.hint}</p>}
-            <ButtonLink to={paths.dashboard} variant="secondary">
-              Voltar ao dashboard
-            </ButtonLink>
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-3">
+              {error.retryable && <Button onClick={retry}>Tentar novamente</Button>}
+              <ButtonLink to={paths.dashboard} variant="secondary">
+                Voltar ao dashboard
+              </ButtonLink>
+            </div>
           </div>
         )}
 

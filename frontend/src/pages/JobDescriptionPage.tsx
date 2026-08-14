@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Button, ButtonLink } from "@components/ui/Button";
+import { FallbackPanel } from "@components/ui/FallbackPanel";
 import { Spinner } from "@components/ui/Spinner";
 import { CheckIcon } from "@components/ui/icons";
 import { sampleVacancy } from "@content/sample-vacancy";
@@ -497,21 +498,20 @@ function AnalysisProblem({
   onRetry: () => void;
 }) {
   return (
-    <div
-      role="status"
-      className="mt-4 rounded-md border border-[--alpha(var(--color-ember-400)/45%)] bg-[--alpha(var(--color-ember-400)/12%)] px-3.5 py-3"
-    >
-      <p className="text-[13.5px] leading-[1.55] text-fg-2">
-        Não conseguimos analisar esta vaga. {problem.detail}
-      </p>
-      <p className="mt-1 font-mono text-[11.5px] text-fg-muted">
-        {problem.hint}
-      </p>
-      {problem.retryable && (
-        <Button variant="secondary" onClick={onRetry} className="mt-3">
-          Analisar de novo
-        </Button>
-      )}
+    <div className="mt-4">
+      <FallbackPanel
+        tone="danger"
+        title="Não conseguimos analisar esta vaga"
+        detail={problem.detail}
+        hint={problem.hint}
+        action={
+          problem.retryable ? (
+            <Button variant="secondary" onClick={onRetry}>
+              Tentar novamente
+            </Button>
+          ) : null
+        }
+      />
     </div>
   );
 }
