@@ -5,7 +5,6 @@ export abstract class AiProviderPort {
   abstract complete(systemPrompt: string, userMessage: string, timeoutMs?: number): Promise<string>;
 }
 
-/** O que deu errado na conversa com o provedor de IA. */
 export type AiErrorKind =
   'invalid_api_key' | 'timeout' | 'unavailable' | 'rate_limited' | 'payment_required';
 
@@ -20,10 +19,6 @@ export class AiError extends Error {
   }
 }
 
-/**
- * Motivo pelo qual a análise não pôde ser feita. Não confundir com um resultado
- * pobre: uma vaga vaga demais gera um perfil vazio, mas a análise deu certo.
- */
 export type ParseFailureReason =
   | 'invalid_api_key'
   | 'timeout'

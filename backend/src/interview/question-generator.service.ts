@@ -5,8 +5,6 @@ import { AiQuestion, AiQuestionsResponseSchema } from './schemas/interview.schem
 
 const DESCRIPTION_EXCERPT_CHARS = 3000;
 const MAX_CHARS_PER_FILE = 6000;
-/** Prompt bem maior que o de parsing de vaga (arquivos de código inteiros) — o
- * modelo demora mais para responder, então o timeout padrão de 30s não basta. */
 const REQUEST_TIMEOUT_MS = 60_000;
 
 const SYSTEM_PROMPT = `
@@ -65,6 +63,7 @@ export interface GenerateQuestionsInput {
   profile: ParsedVacancyProfile;
   files: { path: string; content: string }[];
   count: number;
+  onProgress?: (message: string) => void;
 }
 
 @Injectable()
@@ -74,6 +73,10 @@ export class QuestionGeneratorService {
   constructor(private readonly ai: AiProviderPort) {}
 
   async generate(input: GenerateQuestionsInput): Promise<AiQuestion[]> {
+    input.onProgress?.(
+      'Montando as perguntas da entrevista com a IA — pode levar até um minuto...',
+    );
+
     const systemPrompt = SYSTEM_PROMPT.replace('{count}', String(input.count));
 
     const userMessage = JSON.stringify({

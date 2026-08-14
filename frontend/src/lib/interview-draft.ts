@@ -78,7 +78,6 @@ export function clearRepositoryDraft(): void {
   remove(REPOSITORY_KEY);
 }
 
-/** Reconstrói o "rascunho" de repositório a partir de uma sessão já existente no backend. */
 export function deriveRepositoryDraft(session: InterviewSession): RepositoryDraft | null {
   if (!session.repo) return null;
 

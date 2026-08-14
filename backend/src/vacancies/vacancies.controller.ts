@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { VacanciesService } from './vacancies.service';
 import {
   type CreateVacancyDto,
@@ -23,6 +24,7 @@ import { AuthenticatedUser } from '../auth/types/authenticated-user';
 export class VacanciesController {
   constructor(private readonly service: VacanciesService) {}
 
+  @Throttle({ default: { limit: 10, ttl: 300_000 } })
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -37,6 +39,7 @@ export class VacanciesController {
     return this.service.findOne(id, req.user.id);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 300_000 } })
   @Post(':id/reparse')
   @HttpCode(HttpStatus.ACCEPTED)
   async reparse(@Request() req: { user: AuthenticatedUser }, @Param('id') id: string) {

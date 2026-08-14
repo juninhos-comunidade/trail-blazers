@@ -3,6 +3,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -48,6 +49,8 @@ export interface ProcessedRepository {
   totalTokensEstimative: number;
 }
 
+export type AnalysisProgress = (message: string) => void;
+
 type file = { path: string; content: string };
 
 interface GithubRepoResponse {
@@ -74,6 +77,8 @@ const GITHUB_REPOS_URL =
 
 @Injectable()
 export class RepositoriesService {
+  private readonly logger = new Logger(RepositoriesService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly prisma: PrismaService,
@@ -149,6 +154,7 @@ export class RepositoriesService {
     owner: string,
     repo: string,
     vacancyId: string,
+    onProgress: AnalysisProgress = () => {},
   ): Promise<ProcessedRepository> {
     if (!vacancyId) {
       throw new HttpException(
@@ -164,7 +170,8 @@ export class RepositoriesService {
 
     const cachedData = await this.cacheManager.get<ProcessedRepository>(cacheKey);
     if (cachedData) {
-      console.log(`\n[CACHE] Servindo análise do repositório ${owner}/${repo}.`);
+      this.logger.log(`Servindo análise em cache do repositório ${owner}/${repo}.`);
+      onProgress('Reaproveitando uma análise recente deste repositório...');
       return cachedData;
     }
 
@@ -177,6 +184,8 @@ export class RepositoriesService {
 
     const token = await this.usersService.getGithubToken(userId);
     if (!token) throw new UnauthorizedException('Token do GitHub não encontrado.');
+
+    onProgress('Buscando a lista de arquivos do repositório no GitHub...');
 
     const treeResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`,
@@ -197,7 +206,7 @@ export class RepositoriesService {
       .map((node) => node.path)
       .filter((path) => this.isFileRelevant(path));
 
-    if (String(candidatePaths).length === 0) {
+    if (candidatePaths.length === 0) {
       throw new HttpException(
         {
           code: 'repo_vazio',
@@ -207,6 +216,10 @@ export class RepositoriesService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    onProgress(
+      `Selecionando os arquivos mais relevantes para a vaga entre ${candidatePaths.length} encontrados (IA)...`,
+    );
 
     try {
       candidatePaths = await this.fileSelector.selectRelevantFiles(candidatePaths, {
@@ -223,17 +236,26 @@ export class RepositoriesService {
       );
     }
 
+    onProgress(`Baixando o conteúdo de ${candidatePaths.length} arquivo(s) selecionado(s)...`);
+
     const relevantFiles: file[] = [];
     const omittedFiles: string[] = [];
     let currentCharCount = 0;
 
-    for (const path of candidatePaths) {
+    for (const [index, path] of candidatePaths.entries()) {
       if (currentCharCount >= MAX_CONTEXT_CHARS) {
         omittedFiles.push(path);
         continue;
       }
 
+      onProgress(`Lendo ${path} (${index + 1}/${candidatePaths.length})...`);
+
       const content = await this.fetchFileRawContent(owner, repo, path, token);
+
+      if (content === null) {
+        omittedFiles.push(path);
+        continue;
+      }
 
       if (currentCharCount + content.length <= MAX_CONTEXT_CHARS) {
         relevantFiles.push({ path, content });
@@ -243,16 +265,12 @@ export class RepositoriesService {
       }
     }
 
-    console.log(`\n=== Análise do Repositório: ${owner}/${repo} ===`);
-    console.log(`✓ Arquivos armazenados com sucesso (${relevantFiles.length}):`);
-
-    relevantFiles.forEach((file) => {
-      console.log(`  ├── ${file.path} (${file.content.length} caracteres)`);
-    });
-
-    console.log(`\n⚠ Arquivos omitidos por limite de tokens: ${omittedFiles.length}`);
-    console.log(`Total de tokens estimado: ${Math.ceil(currentCharCount / 4)}`);
-    console.log(`=====================================================\n`);
+    this.logger.debug(
+      `Análise de ${owner}/${repo}: ${relevantFiles.length} arquivo(s) armazenado(s), ` +
+        `${omittedFiles.length} omitido(s) por limite de tokens, ` +
+        `~${Math.ceil(currentCharCount / 4)} tokens estimados. ` +
+        `Arquivos: ${relevantFiles.map((file) => `${file.path} (${file.content.length} chars)`).join(', ')}`,
+    );
 
     const result: ProcessedRepository = {
       relevantFiles,
@@ -275,7 +293,7 @@ export class RepositoriesService {
       );
     }
 
-    if (vacancy.parseStatus === 'failed' || vacancy.parsedOutOfScope) {
+    if (vacancy.parseStatus === 'failed') {
       throw new HttpException(
         {
           code: 'vaga_sem_perfil',
@@ -314,10 +332,18 @@ export class RepositoriesService {
     repo: string,
     path: string,
     token: string,
-  ): Promise<string> {
+  ): Promise<string | null> {
     const res = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.ok ? await res.text() : '';
+
+    if (!res.ok) {
+      this.logger.warn(
+        `Download falhou [${res.status}] ${owner}/${repo}/${path} — arquivo omitido.`,
+      );
+      return null;
+    }
+
+    return res.text();
   }
 }

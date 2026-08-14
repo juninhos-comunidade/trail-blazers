@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Button, ButtonLink } from "@components/ui/Button";
+import { FallbackPanel } from "@components/ui/FallbackPanel";
 import { Spinner } from "@components/ui/Spinner";
 import { CheckIcon } from "@components/ui/icons";
 import { sampleVacancy } from "@content/sample-vacancy";
@@ -33,7 +34,6 @@ import { interviewPath, paths } from "@routes/paths";
 
 type Status = "idle" | "saving" | "analyzing" | "saved";
 
-/** Erro de rede/HTTP no meio do acompanhamento — a vaga já existe, só a análise falhou. */
 function toAnalysisProblem(cause: unknown): AnalysisOutcome {
   if (cause instanceof VacancyError) {
     return {
@@ -85,13 +85,6 @@ function JobDescriptionForm() {
   const [status, setStatus] = useState<Status>(draft ? "saved" : "idle");
   const [error, setError] = useState<VacancyError | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisOutcome | null>(null);
-  /**
-   * Se já existe uma sessão criada a partir desta vaga, a etapa está
-   * concluída: as perguntas já foram geradas com o perfil atual, então o
-   * perfil não pode mais ser ajustado (ficaria dessincronizado da entrevista).
-   * `onChange` limpa junto o rascunho de sessão sempre que o texto muda, então
-   * este valor só fica "true" enquanto `saved` continuar sendo a mesma vaga.
-   */
   const [stepConcluded] = useState(() => readSessionDraft() !== null);
 
   const polling = useRef<AbortController | null>(null);
@@ -142,7 +135,6 @@ function JobDescriptionForm() {
     await trackAnalysis(next);
   };
 
-  /** Acompanha o parsing até o fim e traduz o desfecho para a tela. */
   const trackAnalysis = async (target: VacancyDraft) => {
     const controller = new AbortController();
     polling.current = controller;
@@ -186,7 +178,8 @@ function JobDescriptionForm() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[760px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto w-full max-w-[760px] px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="animate-rise">
       <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
         Sobre qual vaga vamos treinar?
         </h1>
@@ -302,24 +295,27 @@ function JobDescriptionForm() {
           />
         )}
 
-        <div className="mt-9 flex flex-wrap justify-between gap-3">
-          <ButtonLink to={paths.dashboard} variant="ghost">
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-9 lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mx-auto flex w-full max-w-[760px] flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-between">
+          <ButtonLink to={paths.dashboard} variant="secondary" className="w-full lg:w-auto">
             ← Voltar
           </ButtonLink>
 
           <Button
             onClick={() => navigate(paths.repoChooser)}
             disabled={status !== "saved" && status !== "analyzing"}
-            className="max-sm:w-full"
+            className="w-full lg:w-auto"
           >
             Continuar →
           </Button>
         </div>
+      </div>
     </main>
   );
 }
 
-/** Revisão somente-leitura da vaga preenchida numa sessão já existente. */
 function VacancyReviewView({ sessionId }: { sessionId: string }) {
   const [vacancyId, setVacancyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<ParsedVacancyProfile | null>(null);
@@ -353,7 +349,8 @@ function VacancyReviewView({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   return (
-    <main className="mx-auto w-full max-w-[760px] animate-rise px-4 pb-14 sm:px-6 sm:pb-18">
+    <main className="mx-auto w-full max-w-[760px] px-4 pb-28 sm:px-6 lg:pb-18">
+      <div className="animate-rise">
         <h1 className="mb-2 font-display text-[clamp(1.5rem,3vw,1.9rem)] font-semibold tracking-[-0.02em]">
           Vaga usada nesta entrevista
         </h1>
@@ -401,16 +398,19 @@ function VacancyReviewView({ sessionId }: { sessionId: string }) {
             )}
           </>
         )}
+      </div>
 
-        <div className="mt-9 flex flex-wrap justify-between gap-3">
-          <ButtonLink to={paths.dashboard} variant="ghost">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-bg px-4 py-3.5 sm:px-6 lg:static lg:mt-9 lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mx-auto flex w-full max-w-[760px] flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-between">
+          <ButtonLink to={paths.dashboard} variant="secondary" className="w-full lg:w-auto">
             ← Voltar ao dashboard
           </ButtonLink>
 
-          <ButtonLink to={interviewPath(sessionId)} className="max-sm:w-full">
+          <ButtonLink to={interviewPath(sessionId)} className="w-full lg:w-auto">
             Ir para a entrevista →
           </ButtonLink>
         </div>
+      </div>
     </main>
   );
 }
@@ -459,7 +459,7 @@ function SavedCard({
         </p>
       )}
 
-      {profile && !profile.outOfScope && (
+      {profile && (
         <VacancyProfileSummary
           vacancyId={vacancy.id}
           profile={profile}
@@ -476,10 +476,6 @@ function SavedCard({
   );
 }
 
-/**
- * A análise falhou, mas a vaga está salva. O texto precisa deixar claro que o
- * problema foi nosso, e não na descrição que a pessoa escreveu.
- */
 function AnalysisProblem({
   problem,
   onRetry,
@@ -488,21 +484,20 @@ function AnalysisProblem({
   onRetry: () => void;
 }) {
   return (
-    <div
-      role="status"
-      className="mt-4 rounded-md border border-[--alpha(var(--color-ember-400)/45%)] bg-[--alpha(var(--color-ember-400)/12%)] px-3.5 py-3"
-    >
-      <p className="text-[13.5px] leading-[1.55] text-fg-2">
-        Não conseguimos analisar esta vaga. {problem.detail}
-      </p>
-      <p className="mt-1 font-mono text-[11.5px] text-fg-muted">
-        {problem.hint}
-      </p>
-      {problem.retryable && (
-        <Button variant="secondary" onClick={onRetry} className="mt-3">
-          Analisar de novo
-        </Button>
-      )}
+    <div className="mt-4">
+      <FallbackPanel
+        tone="danger"
+        title="Não conseguimos analisar esta vaga"
+        detail={problem.detail}
+        hint={problem.hint}
+        action={
+          problem.retryable ? (
+            <Button variant="secondary" onClick={onRetry}>
+              Tentar novamente
+            </Button>
+          ) : null
+        }
+      />
     </div>
   );
 }
@@ -601,7 +596,7 @@ function VacancyProfileSummary({
                 {profile.technologies.map((technology) => (
                   <span
                     key={technology}
-                    className="rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
+                    className="max-w-full rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text [overflow-wrap:anywhere]"
                   >
                     {technology}
                   </span>
@@ -615,7 +610,7 @@ function VacancyProfileSummary({
               <dt className="mb-1.5 font-mono text-[11.5px] text-fg-muted">
                 Competências-chave
               </dt>
-              <dd className="text-[14px] leading-[1.6] text-fg-2">
+              <dd className="text-[14px] leading-[1.6] text-fg-2 [overflow-wrap:anywhere]">
                 {profile.keyCompetencies.join(" · ")}
               </dd>
             </div>
@@ -733,15 +728,15 @@ function TagListEditor({
           {values.map((value) => (
             <span
               key={value}
-              className="flex items-center gap-1.5 rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
+              className="flex max-w-full items-center gap-1.5 rounded-full border border-[--alpha(var(--color-trail-500)/35%)] bg-[--alpha(var(--color-trail-500)/12%)] px-2.5 py-1 font-mono text-[11.5px] text-trail-text"
             >
-              {value}
+              <span className="[overflow-wrap:anywhere]">{value}</span>
               <button
                 type="button"
                 onClick={() => remove(value)}
                 disabled={disabled}
                 aria-label={`Remover ${value}`}
-                className="text-trail-text/70 transition-colors duration-200 hover:text-trail-text disabled:opacity-60"
+                className="flex-none text-trail-text/70 transition-colors duration-200 hover:text-trail-text disabled:opacity-60"
               >
                 ×
               </button>
