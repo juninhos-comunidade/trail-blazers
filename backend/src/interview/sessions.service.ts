@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma, type Question, type Session, type SessionRepo } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RepositoriesService } from '../repos/repos.service';
@@ -18,6 +19,7 @@ export class SessionsService {
     private readonly repositoriesService: RepositoriesService,
     private readonly questionGenerator: QuestionGeneratorService,
     private readonly reportGenerator: ReportGeneratorService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(userId: string, dto: CreateSessionDto) {
@@ -89,6 +91,8 @@ export class SessionsService {
       vacancy.rawDescription.length +
       analysis.relevantFiles.reduce((sum, file) => sum + file.content.length, 0);
     const estimatedOutputChars = questions.reduce((sum, q) => sum + q.content.length, 0);
+    const totalInputTokens = Math.ceil(estimatedInputChars / 4);
+    const totalOutputTokens = Math.ceil(estimatedOutputChars / 4);
 
     onProgress('Salvando a sessão da entrevista...');
 
@@ -98,8 +102,9 @@ export class SessionsService {
           userId,
           vacancyId: dto.vacancyId,
           status: 'in_progress',
-          totalInputTokens: Math.ceil(estimatedInputChars / 4),
-          totalOutputTokens: Math.ceil(estimatedOutputChars / 4),
+          totalInputTokens,
+          totalOutputTokens,
+          estimatedCost: this.estimateCostUsd(totalInputTokens, totalOutputTokens),
         },
       });
 
@@ -334,6 +339,22 @@ export class SessionsService {
     if (!session) throw new NotFoundException('Sessão não encontrada.');
 
     return session.report ? this.toReportResponse(session.report, sessionId) : null;
+  }
+
+  /**
+   * Estimativa a partir dos tokens já contados por char/4 (mesma aproximação
+   * usada em totalInputTokens/totalOutputTokens) — não é a fatura real da
+   * OpenRouter, só o suficiente para dar uma ordem de grandeza. Com o preço
+   * não configurado (modelo padrão é `:free`), o resultado é sempre 0.
+   */
+  private estimateCostUsd(inputTokens: number, outputTokens: number): number {
+    const pricePerMillionInput = this.config.get<number>('AI_PRICE_PER_1M_INPUT_TOKENS', 0);
+    const pricePerMillionOutput = this.config.get<number>('AI_PRICE_PER_1M_OUTPUT_TOKENS', 0);
+
+    return (
+      (inputTokens / 1_000_000) * pricePerMillionInput +
+      (outputTokens / 1_000_000) * pricePerMillionOutput
+    );
   }
 
   private mapAiError(err: unknown, code: string): HttpException {

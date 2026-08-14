@@ -33,6 +33,14 @@ export const envValidationSchema = Joi.object({
   AI_MODEL: Joi.string().default('openai/gpt-oss-20b:free'),
   APP_TITLE: Joi.string().default('Trail Blazers'),
 
+  // Preço do modelo configurado em AI_MODEL, em dólares por 1M de tokens —
+  // usado só para estimar `Session.estimatedCost` a partir dos tokens já
+  // contados (Session.totalInputTokens/totalOutputTokens). O padrão é 0
+  // porque o modelo padrão (`:free`) não tem custo; ao trocar para um modelo
+  // pago, confira o preço em openrouter.ai/models e preencha aqui.
+  AI_PRICE_PER_1M_INPUT_TOKENS: Joi.number().min(0).default(0),
+  AI_PRICE_PER_1M_OUTPUT_TOKENS: Joi.number().min(0).default(0),
+
   // Opcionais. Sem elas, o endpoint de TTS responde 503 e o frontend cai de
   // volta na Web Speech API do navegador. Gere em portal.azure.com (recurso
   // "Speech", tier gratuito F0: 0,5M caracteres/mês, 1 req. concorrente).

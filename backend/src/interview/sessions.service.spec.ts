@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { SessionsService } from './sessions.service';
@@ -132,6 +133,7 @@ describe('SessionsService', () => {
   let repositories: { analyzeRepositoryContent: jest.Mock };
   let questionGenerator: { generate: jest.Mock };
   let reportGenerator: { generate: jest.Mock };
+  let config: { get: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -154,6 +156,7 @@ describe('SessionsService', () => {
     repositories = { analyzeRepositoryContent: jest.fn() };
     questionGenerator = { generate: jest.fn() };
     reportGenerator = { generate: jest.fn() };
+    config = { get: jest.fn((_key: string, fallback: number) => fallback) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -162,6 +165,7 @@ describe('SessionsService', () => {
         { provide: RepositoriesService, useValue: repositories },
         { provide: QuestionGeneratorService, useValue: questionGenerator },
         { provide: ReportGeneratorService, useValue: reportGenerator },
+        { provide: ConfigService, useValue: config },
       ],
     }).compile();
 
@@ -307,6 +311,36 @@ describe('SessionsService', () => {
         [{ data: { totalOutputTokens: number } }],
       ];
       expect(data.totalOutputTokens).toBe(Math.ceil(chars / 4));
+    });
+
+    it('CT-12.11b estimatedCost fica em 0 quando o preço não está configurado (modelo :free)', async () => {
+      armCreate();
+
+      await service.create(USER_ID, CREATE_DTO);
+
+      const [[{ data }]] = prisma.session.create.mock.calls as [
+        [{ data: { estimatedCost: number } }],
+      ];
+      expect(data.estimatedCost).toBe(0);
+    });
+
+    it('CT-12.11c calcula estimatedCost a partir dos tokens e do preço configurado', async () => {
+      armCreate();
+      config.get.mockImplementation((key: string) => {
+        if (key === 'AI_PRICE_PER_1M_INPUT_TOKENS') return 2;
+        if (key === 'AI_PRICE_PER_1M_OUTPUT_TOKENS') return 10;
+        return 0;
+      });
+
+      await service.create(USER_ID, CREATE_DTO);
+
+      const [[{ data }]] = prisma.session.create.mock.calls as [
+        [{ data: { totalInputTokens: number; totalOutputTokens: number; estimatedCost: number } }],
+      ];
+      const expectedCost =
+        (data.totalInputTokens / 1_000_000) * 2 + (data.totalOutputTokens / 1_000_000) * 10;
+      expect(data.estimatedCost).toBeCloseTo(expectedCost);
+      expect(data.estimatedCost).toBeGreaterThan(0);
     });
 
     it('CT-12.12 devolve no máximo 5 arquivos em repoAnalysis.topFiles', async () => {

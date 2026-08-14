@@ -230,12 +230,16 @@ npm run test:e2e      # testes end-to-end
 npm run test:cov      # com relatório de cobertura
 ```
 
-O frontend usa Vitest:
+O frontend usa Vitest, com o mesmo threshold de 80% de cobertura configurado no `vite.config.ts`:
 
 ```bash
 cd frontend
-npm run test
+npm run test           # modo watch, para desenvolvimento
+npm run test:run       # roda uma vez e sai — usado pelo CI
+npm run test:coverage  # com relatório de cobertura
 ```
+
+Um workflow do GitHub Actions (`.github/workflows/ci.yml`) roda `test`/`test:cov` do backend e `test:coverage` do frontend a cada push e pull request, então uma regressão nos testes ou uma queda de cobertura abaixo do threshold bloqueia o merge — não depende de alguém lembrar de rodar localmente.
 
 ## Deploy
 
@@ -256,6 +260,9 @@ Isso é o comportamento esperado quando `AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION`
 
 **Erro de geração de perguntas ou de parsing da vaga**
 Confirme que `OPENROUTER_API_KEY` é válida e tem créditos/uso disponível no modelo configurado em `AI_MODEL`. Os erros mais comuns (`invalid_api_key`, `rate_limited`, `payment_required`, `timeout`) são tratados de forma explícita pela API e retornados com essa causa identificada.
+
+**Testes do frontend falham com `Cannot read properties of undefined (reading 'clear')` em `src/test/setup.ts`**
+A partir do Node 22.4, o próprio runtime expõe um `localStorage` global experimental (sem `--localstorage-file`, ele resolve para `undefined`) que sobrepõe o `localStorage` funcional que o jsdom tentaria fornecer — o Vitest só copia do jsdom as chaves que ainda não existem no global do Node, então essa aí nunca chega a ser copiada. Os scripts `test`/`test:run`/`test:coverage` do `frontend/package.json` já contornam isso com a flag `--no-experimental-webstorage`; esse erro só aparece se algo chamar `vitest`/`npx vitest` diretamente, pulando o script do `package.json`. Use `npm run test:run` (ou `npm test` a partir da raiz), não `npx vitest run`.
 
 ## Licença e créditos
 

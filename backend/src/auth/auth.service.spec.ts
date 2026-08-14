@@ -108,11 +108,7 @@ describe('AuthService', () => {
       const code = await service.createLoginCode('jwt-assinado');
 
       expect(code).toEqual(expect.stringMatching(/^[0-9a-f]{64}$/));
-      expect(cacheMock.set).toHaveBeenCalledWith(
-        `login_code_${code}`,
-        'jwt-assinado',
-        60_000,
-      );
+      expect(cacheMock.set).toHaveBeenCalledWith(`login_code_${code}`, 'jwt-assinado', 60_000);
     });
 
     it('gera códigos diferentes a cada chamada', async () => {

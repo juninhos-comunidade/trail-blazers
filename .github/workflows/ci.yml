@@ -1,0 +1,66 @@
+name: CI
+
+# Roda os testes (com os thresholds de cobertura de 80%) do backend e do
+# frontend a cada push e pull request. Sem isso, nada além do próprio
+# desenvolvedor local pega uma regressão de testes antes do merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Valores fixos só para satisfazer a validação de env (Joi) no boot do
+      # AppModule usado pelo teste e2e — o Prisma é mockado nesse teste, então
+      # nada aqui precisa ser um segredo real nem apontar para um banco de verdade.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      GITHUB_CLIENT_ID: ci-client-id
+      GITHUB_CLIENT_SECRET: ci-client-secret
+      GITHUB_CALLBACK_URL: http://localhost:3000/auth/github/callback
+      OPENROUTER_API_KEY: ci-openrouter-key
+      JWT_SECRET: ci-only-jwt-secret-nao-usar-em-producao-123
+      ENCRYPTION_KEY: 875a03117263f218f05a39fb078fd4ec60b85b1dc5976fc15eceef7caceab052
+      FRONTEND_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+      - run: npx prisma generate
+      # `npm run lint` fica de fora por enquanto: há débito de lint
+      # pré-existente (erros de `no-unsafe-assignment` em
+      # report-generator.service.ts) que precisa ser corrigido antes de
+      # torná-lo um gate — ver TROUBLESHOOTING/lint no README.
+      - run: npm run test:cov
+      - run: npm run test:e2e
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      # `npm run lint` fica de fora por enquanto: há débito de lint
+      # pré-existente (this-alias em speech.test.ts, blocos vazios) que
+      # precisa ser corrigido antes de torná-lo um gate.
+      - run: npm run test:coverage

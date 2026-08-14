@@ -11,7 +11,10 @@ export type TtsFailureReason = 'not_configured' | 'rate_limited' | 'unavailable'
  * usuário por que caiu para a voz do navegador (em vez de um 503 genérico).
  */
 export class TtsUnavailableError extends ServiceUnavailableException {
-  constructor(message: string, public readonly reason: TtsFailureReason) {
+  constructor(
+    message: string,
+    public readonly reason: TtsFailureReason,
+  ) {
     super({ message, reason });
   }
 }

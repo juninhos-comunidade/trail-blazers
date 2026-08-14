@@ -172,7 +172,7 @@ function RepositoryChooserForm() {
             <p className="flex items-center gap-2 text-[15px] text-fg-2">
               <InfoIcon />
               Selecione até {SELECTION_LIMIT}{" "}
-              {SELECTION_LIMIT === 1 ? "repositório" : "repositórios"} para uma
+              {SELECTION_LIMIT === 1 ? "repositório público" : "repositórios públicos"} para uma
               análise mais focada.
             </p>
             <p className="mt-2 max-w-full truncate font-mono text-[11.5px] text-fg-muted sm:max-w-[62ch]">
@@ -219,9 +219,9 @@ function RepositoryChooserForm() {
 
         {status === "success" && !hasRepositories && (
           <FallbackPanel
-            title="Nenhum repositório encontrado"
-            detail="Não achamos repositórios nesta conta do GitHub."
-            hint="Se você acabou de criar algum, atualize a lista."
+            title="Nenhum repositório público encontrado"
+            detail="Não achamos repositórios públicos nesta conta do GitHub."
+            hint="Repositórios privados não aparecem aqui — por enquanto só analisamos repositórios públicos. Se você acabou de criar ou tornar um público, atualize a lista."
             action={
               <Button variant="secondary" onClick={retry}>
                 Atualizar lista

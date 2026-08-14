@@ -170,7 +170,7 @@ export class RepositoriesService {
 
     const cachedData = await this.cacheManager.get<ProcessedRepository>(cacheKey);
     if (cachedData) {
-      console.log(`\n[CACHE] Servindo análise do repositório ${owner}/${repo}.`);
+      this.logger.log(`Servindo análise em cache do repositório ${owner}/${repo}.`);
       onProgress('Reaproveitando uma análise recente deste repositório...');
       return cachedData;
     }
@@ -206,7 +206,7 @@ export class RepositoriesService {
       .map((node) => node.path)
       .filter((path) => this.isFileRelevant(path));
 
-    if (String(candidatePaths).length === 0) {
+    if (candidatePaths.length === 0) {
       throw new HttpException(
         {
           code: 'repo_vazio',
@@ -265,16 +265,12 @@ export class RepositoriesService {
       }
     }
 
-    console.log(`\n=== Análise do Repositório: ${owner}/${repo} ===`);
-    console.log(`✓ Arquivos armazenados com sucesso (${relevantFiles.length}):`);
-
-    relevantFiles.forEach((file) => {
-      console.log(`  ├── ${file.path} (${file.content.length} caracteres)`);
-    });
-
-    console.log(`\n⚠ Arquivos omitidos por limite de tokens: ${omittedFiles.length}`);
-    console.log(`Total de tokens estimado: ${Math.ceil(currentCharCount / 4)}`);
-    console.log(`=====================================================\n`);
+    this.logger.debug(
+      `Análise de ${owner}/${repo}: ${relevantFiles.length} arquivo(s) armazenado(s), ` +
+        `${omittedFiles.length} omitido(s) por limite de tokens, ` +
+        `~${Math.ceil(currentCharCount / 4)} tokens estimados. ` +
+        `Arquivos: ${relevantFiles.map((file) => `${file.path} (${file.content.length} chars)`).join(', ')}`,
+    );
 
     const result: ProcessedRepository = {
       relevantFiles,

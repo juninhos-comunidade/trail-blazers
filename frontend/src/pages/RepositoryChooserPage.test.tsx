@@ -198,7 +198,7 @@ describe("RepositoryChooserPage - offerSkip", () => {
     expect(
       await screen.findByRole("button", { name: /seguir sem repositórios/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Nenhum repositório encontrado")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum repositório público encontrado")).toBeInTheDocument();
   });
 });
 
