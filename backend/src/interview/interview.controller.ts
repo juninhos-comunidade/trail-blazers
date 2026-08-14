@@ -12,6 +12,7 @@ import {
   Request,
   Res,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { ZodValidationPipe } from '../vacancies/schemas/zod-validation.pipe';
@@ -39,6 +40,9 @@ type StreamEvent =
 export class InterviewController {
   constructor(private readonly sessions: SessionsService) {}
 
+  // Cada criação de sessão lê o repositório inteiro e faz duas chamadas de
+  // IA — o limite geral do app não segura um script criando sessões em loop.
+  @Throttle({ default: { limit: 5, ttl: 300_000 } })
   @Post()
   async create(
     @Request() req: { user: AuthenticatedUser },
@@ -101,6 +105,7 @@ export class InterviewController {
     return this.sessions.submitAnswer(req.user.id, id, dto);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 300_000 } })
   @Post(':id/report')
   @HttpCode(HttpStatus.OK)
   async generateReport(@Request() req: { user: AuthenticatedUser }, @Param('id') id: string) {

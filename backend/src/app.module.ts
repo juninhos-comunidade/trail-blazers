@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { envValidationSchema } from './config/env.validation';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -21,6 +23,9 @@ import { TtsModule } from './tts/tts.module';
         abortEarly: false,
       },
     }),
+    // Limite geral por IP. Endpoints que disparam chamadas de IA (pagas) têm
+    // um limite bem mais apertado via @Throttle nos próprios controllers.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     PrismaModule,
     CryptoModule,
     UsersModule,
@@ -32,6 +37,6 @@ import { TtsModule } from './tts/tts.module';
     TtsModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
