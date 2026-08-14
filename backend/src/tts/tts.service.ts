@@ -1,8 +1,12 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
+import { createHash } from 'node:crypto';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_VOICE = 'pt-BR-FranciscaNeural';
+const CACHE_KEY_PREFIX = 'tts_audio_';
 
 export type TtsFailureReason = 'not_configured' | 'rate_limited' | 'unavailable';
 
@@ -48,13 +52,23 @@ export class TtsService {
   private readonly region?: string;
   private readonly voice: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {
     this.apiKey = this.config.get<string>('AZURE_SPEECH_KEY');
     this.region = this.config.get<string>('AZURE_SPEECH_REGION');
     this.voice = this.config.get<string>('AZURE_SPEECH_VOICE', DEFAULT_VOICE);
   }
 
   async synthesize(text: string): Promise<Buffer> {
+    const cacheKey = this.cacheKeyFor(text);
+    const cached = await this.cacheManager.get<Buffer>(cacheKey);
+    if (cached) {
+      this.logger.log('Servindo áudio de TTS em cache — nenhuma chamada à Azure.');
+      return cached;
+    }
+
     if (!this.apiKey || !this.region) {
       throw new TtsUnavailableError(
         'Síntese de voz no servidor não está configurada.',
@@ -102,6 +116,19 @@ export class TtsService {
       throw new TtsUnavailableError('Não foi possível gerar áudio agora.', 'unavailable');
     }
 
-    return Buffer.from(await response.arrayBuffer());
+    const audio = Buffer.from(await response.arrayBuffer());
+    await this.cacheManager.set(cacheKey, audio);
+
+    return audio;
+  }
+
+  /**
+   * A voz é fixa por deploy (configurada no servidor, não escolhida pelo
+   * usuário), então o mesmo texto sempre produz o mesmo áudio — incluir a
+   * voz na chave só evita servir áudio errado se ela mudar entre deploys.
+   */
+  private cacheKeyFor(text: string): string {
+    const hash = createHash('sha256').update(text).digest('hex');
+    return `${CACHE_KEY_PREFIX}${this.voice}_${hash}`;
   }
 }

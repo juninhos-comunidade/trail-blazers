@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { TtsService, TtsUnavailableError } from './tts.service';
 import { SpeakSchema } from './tts.schema';
 
@@ -25,6 +26,7 @@ const timeoutError = () =>
 
 describe('TtsService', () => {
   let fetchMock: jest.Mock;
+  let cache: { get: jest.Mock; set: jest.Mock };
 
   const build = async (env: Record<string, string | undefined>) => {
     const config = {
@@ -32,7 +34,11 @@ describe('TtsService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TtsService, { provide: ConfigService, useValue: config }],
+      providers: [
+        TtsService,
+        { provide: ConfigService, useValue: config },
+        { provide: CACHE_MANAGER, useValue: cache },
+      ],
     }).compile();
 
     return module.get(TtsService);
@@ -41,6 +47,7 @@ describe('TtsService', () => {
   beforeEach(() => {
     fetchMock = jest.fn();
     global.fetch = fetchMock;
+    cache = { get: jest.fn().mockResolvedValue(undefined), set: jest.fn() };
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
@@ -76,6 +83,41 @@ describe('TtsService', () => {
 
     expect(Buffer.isBuffer(audio)).toBe(true);
     expect([...audio]).toEqual([1, 2, 3]);
+  });
+
+  it('CT-16.2b guarda o áudio sintetizado no cache', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
+    fetchMock.mockResolvedValue(audioOk([1, 2, 3]));
+
+    const audio = await service.synthesize('olá');
+
+    expect(cache.set).toHaveBeenCalledTimes(1);
+    const [key, cachedValue] = cache.set.mock.calls[0] as [string, Buffer];
+    expect(key).toMatch(/^tts_audio_/);
+    expect(cachedValue).toBe(audio);
+  });
+
+  it('CT-16.2c com o áudio em cache, devolve direto e não chama a Azure nem exige configuração', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: undefined, AZURE_SPEECH_REGION: undefined });
+    const cachedAudio = Buffer.from([9, 9, 9]);
+    cache.get.mockResolvedValue(cachedAudio);
+
+    const audio = await service.synthesize('já falado antes');
+
+    expect(audio).toBe(cachedAudio);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('CT-16.2d textos diferentes geram chaves de cache diferentes', async () => {
+    const service = await build({ AZURE_SPEECH_KEY: API_KEY, AZURE_SPEECH_REGION: REGION });
+    fetchMock.mockResolvedValue(audioOk([1]));
+
+    await service.synthesize('primeiro texto');
+    await service.synthesize('segundo texto');
+
+    const [firstKey] = cache.set.mock.calls[0] as [string];
+    const [secondKey] = cache.set.mock.calls[1] as [string];
+    expect(firstKey).not.toBe(secondKey);
   });
 
   it('CT-16.3 autentica com Ocp-Apim-Subscription-Key e usa a voz configurada', async () => {
