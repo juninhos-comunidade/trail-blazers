@@ -5,6 +5,8 @@ import { GuardedFallback } from "./auth/GuardedFallback";
 import { RedirectIfAuthenticated } from "./auth/RedirectIfAuthenticated";
 import { RequireAuth } from "./auth/RequireAuth";
 import { InterviewFlowLayout } from "@components/app/InterviewFlowLayout";
+import { DemoAutopilot } from "./demo/DemoAutopilot";
+import { DEMO_MODE } from "./demo/demo-flag";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LandingPage } from "./pages/LandingPage";
@@ -42,6 +44,8 @@ export default function App() {
 
             <Route path="*" element={<GuardedFallback />} />
           </Routes>
+
+          {DEMO_MODE && <DemoAutopilot />}
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
