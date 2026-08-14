@@ -49,6 +49,7 @@ export function InterviewPage() {
   const [submitError, setSubmitError] = useState<InterviewError | null>(null);
 
   const [ttsEnabled, setTtsEnabled] = useTtsPreference();
+  const [speaking, setSpeaking] = useState(false);
   const [recording, setRecording] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const micSupported = useMemo(() => isSpeechRecognitionSupported(), []);
@@ -122,7 +123,8 @@ export function InterviewPage() {
     if (lastSpokenIdRef.current === currentQuestion.id) return;
 
     lastSpokenIdRef.current = currentQuestion.id;
-    void speak(currentQuestion.content);
+    setSpeaking(true);
+    void speak(currentQuestion.content).finally(() => setSpeaking(false));
   }, [ttsEnabled, currentQuestion]);
 
   useEffect(() => {
@@ -136,8 +138,9 @@ export function InterviewPage() {
   };
 
   const repeatQuestion = () => {
-    if (!currentQuestion) return;
-    void speak(currentQuestion.content);
+    if (!currentQuestion || speaking) return;
+    setSpeaking(true);
+    void speak(currentQuestion.content).finally(() => setSpeaking(false));
   };
 
   const toggleRecording = () => {
@@ -245,6 +248,7 @@ export function InterviewPage() {
                   isCurrentQuestion={Boolean(currentQuestion) && entry.question?.id === currentQuestion?.id}
                   ttsEnabled={ttsEnabled}
                   onRepeat={repeatQuestion}
+                  repeatDisabled={speaking}
                 />
               ))}
               {submitting && <TypingBubble />}
@@ -378,11 +382,13 @@ function ChatMessage({
   isCurrentQuestion,
   ttsEnabled,
   onRepeat,
+  repeatDisabled,
 }: {
   entry: ChatEntry;
   isCurrentQuestion: boolean;
   ttsEnabled: boolean;
   onRepeat: () => void;
+  repeatDisabled: boolean;
 }) {
   if (entry.from === "user") {
     return (
@@ -432,8 +438,9 @@ function ChatMessage({
           <button
             type="button"
             onClick={onRepeat}
+            disabled={repeatDisabled}
             aria-label="Repetir a pergunta em voz alta"
-            className="flex self-start items-center gap-1.5 rounded-full px-1 py-0.5 font-mono text-[11px] text-fg-muted transition-colors duration-200 hover:text-trail-text"
+            className="flex self-start items-center gap-1.5 rounded-full px-1 py-0.5 font-mono text-[11px] text-fg-muted transition-colors duration-200 hover:text-trail-text disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:text-fg-muted"
           >
             <ReplayIcon size={11} />
             repetir

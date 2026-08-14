@@ -465,6 +465,47 @@ describe("speak", () => {
     expect(synth.cancel).toHaveBeenCalledTimes(2);
   });
 
+  it("when two calls overlap, only the latest one ever plays audio — even if the older call's network response arrives last", async () => {
+    // Simulates double-clicking "repetir": the first speak() is still
+    // awaiting its network response when the second one starts. Whichever
+    // response comes back, only the most recent call may create/play audio.
+    let resolveFirst: (blob: Blob) => void = () => {};
+    let resolveSecond: (blob: Blob) => void = () => {};
+
+    vi.mocked(synthesizeSpeech)
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)));
+
+    const audioInstances: ReturnType<typeof makeFakeAudio>[] = [];
+    (window as unknown as Record<string, unknown>).Audio = vi.fn().mockImplementation(function () {
+      const instance = makeFakeAudio();
+      audioInstances.push(instance);
+      return instance;
+    }) as unknown;
+
+    const synth = makeFakeSynth(() => []);
+    (window as unknown as Record<string, unknown>).speechSynthesis = synth as unknown;
+
+    const firstStatus = vi.fn();
+    const secondStatus = vi.fn();
+
+    const firstCall = speak("first", { onStatus: firstStatus });
+    const secondCall = speak("second", { onStatus: secondStatus });
+
+    // The older call's response arrives *after* the newer one's.
+    resolveSecond(new Blob(["second"], { type: "audio/mpeg" }));
+    await secondCall;
+    resolveFirst(new Blob(["first"], { type: "audio/mpeg" }));
+    await firstCall;
+
+    // Only one Audio was ever created — the stale response never built one.
+    expect(audioInstances).toHaveLength(1);
+    expect(audioInstances[0].play).toHaveBeenCalledTimes(1);
+
+    expect(secondStatus).toHaveBeenCalledWith({ source: "server" });
+    expect(firstStatus).not.toHaveBeenCalled();
+  });
+
   it("on synthesizeSpeech success: builds an Audio, calls onStatus({source:'server'}), and does not fall back to the browser", async () => {
     const blob = new Blob(["audio"], { type: "audio/mpeg" });
     vi.mocked(synthesizeSpeech).mockResolvedValue(blob);

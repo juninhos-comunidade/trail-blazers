@@ -261,6 +261,53 @@ describe("InterviewPage — TTS automático", () => {
     expect(speak).toHaveBeenNthCalledWith(2, "Repita isso?");
   });
 
+  it("clicar 'repetir' de novo antes da fala anterior terminar não dispara uma segunda chamada a speak", async () => {
+    localStorage.setItem("interviewtrail.tts-enabled", "1");
+    const questions = [makeQuestion({ id: "q1", content: "Repita isso?", answer: null })];
+    (getSession as Mock).mockResolvedValue(makeSession({ questions }));
+
+    let resolveAutoSpeak: () => void = () => {};
+    (speak as Mock).mockImplementationOnce(
+      () => new Promise<void>((resolve) => (resolveAutoSpeak = resolve)),
+    );
+
+    renderPage(paths.interview);
+    await waitForSpinnerGone();
+    await screen.findByText("Repita isso?");
+    await waitFor(() => expect(speak).toHaveBeenCalledTimes(1));
+
+    const repeatButton = screen.getByRole("button", { name: /repetir a pergunta em voz alta/i });
+    // Enquanto a fala automática da pergunta ainda está em andamento, o botão
+    // já deve estar desabilitado — clicar não deve disparar uma 2ª chamada.
+    expect(repeatButton).toBeDisabled();
+
+    resolveAutoSpeak();
+    await waitFor(() => expect(repeatButton).toBeEnabled());
+
+    let resolveFirstRepeat: () => void = () => {};
+    (speak as Mock).mockImplementationOnce(
+      () => new Promise<void>((resolve) => (resolveFirstRepeat = resolve)),
+    );
+
+    const user = userEvent.setup();
+    await user.click(repeatButton);
+    expect(speak).toHaveBeenCalledTimes(2);
+    expect(repeatButton).toBeDisabled();
+
+    // Segundo clique enquanto a primeira chamada de "repetir" ainda está em
+    // voo: nenhuma nova chamada a speak deve acontecer — é exatamente o
+    // clique duplo que causava dois áudios tocando ao mesmo tempo.
+    await user.click(repeatButton);
+    expect(speak).toHaveBeenCalledTimes(2);
+
+    resolveFirstRepeat();
+    await waitFor(() => expect(repeatButton).toBeEnabled());
+
+    // Só depois de terminar é que um novo clique dispara outra chamada.
+    await user.click(repeatButton);
+    expect(speak).toHaveBeenCalledTimes(3);
+  });
+
   it("desmontagem chama stopSpeaking", async () => {
     const questions = [makeQuestion({ id: "q1", content: "Pergunta?", answer: null })];
     (getSession as Mock).mockResolvedValue(makeSession({ questions }));

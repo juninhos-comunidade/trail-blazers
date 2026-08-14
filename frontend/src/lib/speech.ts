@@ -145,6 +145,15 @@ function stopCurrentAudio(): void {
 }
 
 /**
+ * Cada chamada a `speak` recebe um token novo. Se, quando a resposta do
+ * servidor chegar, uma chamada mais nova já tiver começado (ex.: dois
+ * cliques rápidos em "repetir"), o resultado desta é descartado — só a
+ * última chamada tem permissão de criar e tocar áudio. Sem isso, duas
+ * respostas que chegam fora de ordem tocam ao mesmo tempo, dessincronizadas.
+ */
+let latestSpeakToken = 0;
+
+/**
  * Resultado de uma chamada a `speak`, para que a UI possa avisar o usuário
  * quando a voz não veio do servidor (ex. tier gratuito do Azure Speech sem
  * cota, ocupado por outra entrevista, ou não configurado).
@@ -188,11 +197,16 @@ export async function speak(
   text: string,
   { lang = "pt-BR", onStatus }: { lang?: string; onStatus?: (status: SpeechStatus) => void } = {},
 ): Promise<void> {
+  const myToken = ++latestSpeakToken;
+  const isStale = () => myToken !== latestSpeakToken;
+
   stopCurrentAudio();
   if (isSpeechSynthesisSupported()) window.speechSynthesis.cancel();
 
   try {
     const blob = await synthesizeSpeech(text);
+    if (isStale()) return;
+
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
 
@@ -200,9 +214,13 @@ export async function speak(
     currentAudio = audio;
 
     await audio.play();
+    if (isStale()) return;
+
     onStatus?.({ source: "server" });
     return;
   } catch (err) {
+    if (isStale()) return;
+
     const reason = err instanceof TtsError ? err.reason : "unknown";
 
     if (!isSpeechSynthesisSupported()) {
@@ -213,6 +231,7 @@ export async function speak(
     onStatus?.({ source: "browser", reason });
   }
 
+  if (isStale()) return;
   await speakWithBrowser(text, { lang });
 }
 
