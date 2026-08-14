@@ -67,7 +67,7 @@ export function InterviewFlowLayout() {
    * concluída assim que o usuário salva a vaga e clica em "Continuar",
    * antes de qualquer sessão existir.
    */
-  const maxCompletedStep = reportDone
+  const statusCompletedStep = reportDone
     ? 4
     : interviewDone
       ? 3
@@ -76,6 +76,15 @@ export function InterviewFlowLayout() {
         : hasVacancy
           ? 1
           : 0;
+  /**
+   * `status` vem de um fetch que refaz a cada troca de rota — enquanto ele
+   * está em voo, ainda reflete o status da tela anterior (ex.: "in_progress"
+   * ao acabar de responder a última pergunta e navegar pro relatório). Como
+   * só é possível chegar na etapa N tendo concluído a N-1 (a navegação em si
+   * garante isso), `current - 1` funciona como piso: marca a etapa anterior
+   * como concluída na hora, sem esperar essa requisição voltar.
+   */
+  const maxCompletedStep = Math.max(statusCompletedStep, current - 1);
 
   return (
     <div className="flex h-dvh flex-col">
