@@ -9,7 +9,11 @@ import { GithubUser } from './types/github-user';
 describe('AuthController', () => {
   let controller: AuthController;
 
-  const authServiceMock = { loginWithGithub: jest.fn() };
+  const authServiceMock = {
+    loginWithGithub: jest.fn(),
+    createLoginCode: jest.fn(),
+    exchangeLoginCode: jest.fn(),
+  };
   const configMock = { getOrThrow: jest.fn() };
 
   const githubUser: GithubUser = {
@@ -29,6 +33,7 @@ describe('AuthController', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     authServiceMock.loginWithGithub.mockResolvedValue({ accessToken: 'jwt-assinado' });
+    authServiceMock.createLoginCode.mockResolvedValue('codigo-de-uso-unico');
     configMock.getOrThrow.mockReturnValue('http://localhost:3001');
 
     const module: TestingModule = await Test.createTestingModule({
@@ -51,15 +56,17 @@ describe('AuthController', () => {
   });
 
   describe('githubAuthCallback', () => {
-    it('redireciona para o front com o token na query', async () => {
+    it('redireciona para o front com um código de uso único, nunca o token', async () => {
       const { res, redirect } = buildResponse();
 
       await controller.githubAuthCallback(buildRequest(githubUser), res);
 
       expect(authServiceMock.loginWithGithub).toHaveBeenCalledWith(githubUser);
+      expect(authServiceMock.createLoginCode).toHaveBeenCalledWith('jwt-assinado');
       expect(redirect).toHaveBeenCalledWith(
-        'http://localhost:3001/auth/success?token=jwt-assinado',
+        'http://localhost:3001/auth/success?code=codigo-de-uso-unico',
       );
+      expect(redirect).not.toHaveBeenCalledWith(expect.stringContaining('token='));
     });
 
     it('monta a URL a partir do FRONTEND_URL configurado', async () => {
@@ -70,7 +77,7 @@ describe('AuthController', () => {
 
       expect(configMock.getOrThrow).toHaveBeenCalledWith('FRONTEND_URL');
       expect(redirect).toHaveBeenCalledWith(
-        'https://app.trailblazers.dev/auth/success?token=jwt-assinado',
+        'https://app.trailblazers.dev/auth/success?code=codigo-de-uso-unico',
       );
     });
 
@@ -86,6 +93,27 @@ describe('AuthController', () => {
 
       expect(authServiceMock.loginWithGithub).not.toHaveBeenCalled();
       expect(redirect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('exchange', () => {
+    it('troca um código válido pelo access token', async () => {
+      authServiceMock.exchangeLoginCode.mockResolvedValue('jwt-assinado');
+
+      const result = await controller.exchange({ code: 'codigo-de-uso-unico' });
+
+      expect(authServiceMock.exchangeLoginCode).toHaveBeenCalledWith('codigo-de-uso-unico');
+      expect(result).toEqual({ accessToken: 'jwt-assinado' });
+    });
+
+    it('propaga a rejeição de código inválido ou expirado', async () => {
+      authServiceMock.exchangeLoginCode.mockRejectedValue(
+        new UnauthorizedException('Código de login inválido ou expirado.'),
+      );
+
+      await expect(controller.exchange({ code: 'invalido' })).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

@@ -1,10 +1,11 @@
 import { StrictMode } from "react";
 import { Route, Routes } from "react-router-dom";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuthCallbackPage } from "./AuthCallbackPage";
 import { renderWithProviders, screen } from "../test/render";
 import { signTestToken } from "../test/jwt-helpers";
+import { jsonResponse, mockFetchOnce, mockFetchRejectOnce } from "../test/fetch-mock";
 
 function Login() {
   return <div>página de login</div>;
@@ -36,6 +37,7 @@ const REDIRECT_STORAGE_KEY = "interviewtrail:redirect-after-login";
 afterEach(() => {
   sessionStorage.clear();
   localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 describe("AuthCallbackPage", () => {
@@ -45,29 +47,39 @@ describe("AuthCallbackPage", () => {
     expect(await screen.findByText("página de login")).toBeInTheDocument();
   });
 
-  it("redirects to login with erro=sem_token when there's no error and no token", async () => {
+  it("redirects to login with erro=sem_token when there's no error and no code", async () => {
     renderCallback("/auth/success");
 
     expect(await screen.findByText("página de login")).toBeInTheDocument();
   });
 
-  it("redirects to login with erro=token_invalido when signIn fails", async () => {
-    renderCallback("/auth/success?token=not-a-real-jwt");
+  it("redirects to login with erro=token_invalido when the code exchange fails", async () => {
+    mockFetchRejectOnce();
+    renderCallback("/auth/success?code=codigo-invalido");
 
     expect(await screen.findByText("página de login")).toBeInTheDocument();
   });
 
-  it("navigates to the dashboard when signIn succeeds and there's no pending redirect", async () => {
+  it("redirects to login with erro=token_invalido when the exchanged token isn't a valid JWT", async () => {
+    mockFetchOnce(jsonResponse({ accessToken: "not-a-real-jwt" }));
+    renderCallback("/auth/success?code=codigo-de-uso-unico");
+
+    expect(await screen.findByText("página de login")).toBeInTheDocument();
+  });
+
+  it("navigates to the dashboard when the exchange succeeds and there's no pending redirect", async () => {
     const token = signTestToken();
-    renderCallback(`/auth/success?token=${token}`);
+    mockFetchOnce(jsonResponse({ accessToken: token }));
+    renderCallback("/auth/success?code=codigo-de-uso-unico");
 
     expect(await screen.findByText("painel")).toBeInTheDocument();
   });
 
-  it("navigates to the pending redirect when signIn succeeds and one was saved", async () => {
+  it("navigates to the pending redirect when the exchange succeeds and one was saved", async () => {
     sessionStorage.setItem(REDIRECT_STORAGE_KEY, "/em-outro-lugar");
     const token = signTestToken();
-    renderCallback(`/auth/success?token=${token}`);
+    mockFetchOnce(jsonResponse({ accessToken: token }));
+    renderCallback("/auth/success?code=codigo-de-uso-unico");
 
     expect(await screen.findByText("destino do redirect salvo")).toBeInTheDocument();
   });
@@ -79,7 +91,8 @@ describe("AuthCallbackPage", () => {
     // this scenario is the most sensitive way to catch a double-invocation.
     sessionStorage.setItem(REDIRECT_STORAGE_KEY, "/em-outro-lugar");
     const token = signTestToken();
-    renderCallback(`/auth/success?token=${token}`, { strict: true });
+    mockFetchOnce(jsonResponse({ accessToken: token }));
+    renderCallback("/auth/success?code=codigo-de-uso-unico", { strict: true });
 
     expect(await screen.findByText("destino do redirect salvo")).toBeInTheDocument();
     expect(screen.queryByText("painel")).not.toBeInTheDocument();
