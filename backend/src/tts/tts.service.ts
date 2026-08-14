@@ -10,10 +10,6 @@ const CACHE_KEY_PREFIX = 'tts_audio_';
 
 export type TtsFailureReason = 'not_configured' | 'rate_limited' | 'unavailable';
 
-/**
- * Erro de TTS com um `reason` estável que o frontend usa para explicar ao
- * usuário por que caiu para a voz do navegador (em vez de um 503 genérico).
- */
 export class TtsUnavailableError extends ServiceUnavailableException {
   constructor(
     message: string,
@@ -37,14 +33,6 @@ function escapeSsml(text: string): string {
     .replace(/'/g, '&apos;');
 }
 
-/**
- * Fala em servidor via Azure Speech (tier gratuito F0: 0,5M caracteres/mês,
- * 1 requisição concorrente), para uma voz consistente independente do
- * navegador do usuário. É opcional: sem AZURE_SPEECH_KEY/REGION configuradas,
- * ou se a cota/concorrência do F0 estourar, lança TtsUnavailableError — o
- * frontend usa o `reason` para cair de volta na Web Speech API do navegador
- * e avisar o usuário do motivo.
- */
 @Injectable()
 export class TtsService {
   private readonly logger = new Logger(TtsService.name);
@@ -122,11 +110,6 @@ export class TtsService {
     return audio;
   }
 
-  /**
-   * A voz é fixa por deploy (configurada no servidor, não escolhida pelo
-   * usuário), então o mesmo texto sempre produz o mesmo áudio — incluir a
-   * voz na chave só evita servir áudio errado se ela mudar entre deploys.
-   */
   private cacheKeyFor(text: string): string {
     const hash = createHash('sha256').update(text).digest('hex');
     return `${CACHE_KEY_PREFIX}${this.voice}_${hash}`;

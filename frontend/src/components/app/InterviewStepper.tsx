@@ -9,16 +9,8 @@ const progressByStep = ["0%", "34%", "67%", "100%"];
 
 interface InterviewStepperProps {
   current: number;
-  /**
-   * Maior passo já concluído de fato (progresso real, não a página que está
-   * sendo vista). Um passo aparece com o marcador de "concluído" sempre que
-   * `number <= maxCompletedStep`, independente de qual passo é o `current` —
-   * revisar uma etapa anterior não deve fazer as etapas seguintes perderem a
-   * marcação de concluídas.
-   */
   maxCompletedStep: number;
   className?: string;
-  /** Devolve o link para revisar aquele passo (somente leitura), ou `undefined` se ele ainda não tiver dados para mostrar. */
   getStepHref?: (step: number) => string | undefined;
 }
 

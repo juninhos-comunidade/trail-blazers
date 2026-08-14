@@ -91,8 +91,6 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
       resolve(synth.getVoices());
     };
     synth.addEventListener("voiceschanged", onVoicesChanged);
-    // Alguns navegadores nunca disparam o evento se as vozes já estavam
-    // prontas antes do listener ser anexado — não trava esperando para sempre.
     setTimeout(() => {
       synth.removeEventListener("voiceschanged", onVoicesChanged);
       resolve(synth.getVoices());
@@ -100,12 +98,6 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
-/**
- * Vozes "de rede" (`localService: false`, ex. as vozes Google do Chrome) são
- * tipicamente bem mais naturais que as vozes locais (ex. espeak-ng no Linux).
- * Entre as vozes do idioma pedido, prioriza: rede > nome bate exatamente com
- * `lang` > primeira que casar o prefixo do idioma.
- */
 function pickBestVoice(voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesisVoice | null {
   const prefix = lang.split("-")[0];
   const candidates = voices.filter((voice) => voice.lang.toLowerCase().startsWith(prefix));
@@ -144,20 +136,8 @@ function stopCurrentAudio(): void {
   currentAudio = null;
 }
 
-/**
- * Cada chamada a `speak` recebe um token novo. Se, quando a resposta do
- * servidor chegar, uma chamada mais nova já tiver começado (ex.: dois
- * cliques rápidos em "repetir"), o resultado desta é descartado — só a
- * última chamada tem permissão de criar e tocar áudio. Sem isso, duas
- * respostas que chegam fora de ordem tocam ao mesmo tempo, dessincronizadas.
- */
 let latestSpeakToken = 0;
 
-/**
- * Resultado de uma chamada a `speak`, para que a UI possa avisar o usuário
- * quando a voz não veio do servidor (ex. tier gratuito do Azure Speech sem
- * cota, ocupado por outra entrevista, ou não configurado).
- */
 export type SpeechStatus =
   | { source: "server" }
   | { source: "browser"; reason: TtsFailureReason }
@@ -171,11 +151,6 @@ const FALLBACK_MESSAGES: Record<TtsFailureReason, string> = {
   unknown: "Leitor de voz do servidor falhou",
 };
 
-/**
- * Traduz um `SpeechStatus` para uma frase exibível ao usuário. Retorna
- * `null` quando a voz veio do servidor com sucesso — nesse caso não há nada
- * a avisar.
- */
 export function describeSpeechStatus(status: SpeechStatus): string | null {
   if (status.source === "server") return null;
 
@@ -185,14 +160,6 @@ export function describeSpeechStatus(status: SpeechStatus): string | null {
     : `${base}, e este navegador não tem leitura de voz embutida.`;
 }
 
-/**
- * Fala um texto com a voz mais humana disponível: primeiro tenta o TTS do
- * backend (Azure Speech), que soa igual em qualquer navegador; se a chamada
- * falhar (sem cota, sem chave configurada, concorrência do tier gratuito
- * esgotada, sem rede), cai para a Web Speech API do próprio navegador —
- * nunca fica sem voz nenhuma. `onStatus`, se informado, é chamado com o
- * resultado para que a UI possa avisar o usuário de forma transparente.
- */
 export async function speak(
   text: string,
   { lang = "pt-BR", onStatus }: { lang?: string; onStatus?: (status: SpeechStatus) => void } = {},

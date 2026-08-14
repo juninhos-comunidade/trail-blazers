@@ -122,8 +122,6 @@ describe("describeLengthProblem (via rendered length-problem message)", () => {
     renderForm();
     const textarea = screen.getByLabelText("Descrição da vaga");
     await user.type(textarea, "   ");
-    // whitespace-only trims to empty, so the idle "Salvar vaga" block never
-    // appears (it's gated on text.trim().length > 0)
     expect(screen.queryByRole("button", { name: "Salvar vaga" })).not.toBeInTheDocument();
   });
 
@@ -156,7 +154,6 @@ describe("describeLengthProblem (via rendered length-problem message)", () => {
     const user = userEvent.setup();
     renderForm();
     const textarea = screen.getByLabelText("Descrição da vaga");
-    // pasting is much faster than typing 10k chars via keystrokes
     await user.click(textarea);
     await user.paste("a".repeat(10_000));
     expect(screen.getByRole("button", { name: "Salvar vaga" })).toBeEnabled();
@@ -224,7 +221,6 @@ describe("editing text after having saved", () => {
 
     expect(screen.queryByText("Vaga salva")).not.toBeInTheDocument();
     expect(mockedClearVacancyDraft).toHaveBeenCalled();
-    // "idle" Save block should now be showing again, since we typed non-empty text
     expect(screen.getByRole("button", { name: "Salvar vaga" })).toBeInTheDocument();
   });
 });
@@ -268,7 +264,6 @@ describe("save()", () => {
     });
     expect(screen.getByRole("button", { name: "Continuar →" })).toBeEnabled();
 
-    // resolve pending polling promise to avoid unhandled state after test
     resolvePolling({
       id: "vacancy-1",
       parseStatus: "done",
@@ -292,7 +287,6 @@ describe("save()", () => {
       "O servidor não conseguiu salvar a vaga.",
     );
     expect(screen.getByText("Tente de novo.")).toBeInTheDocument();
-    // reverted to idle: Save button is visible again
     expect(screen.getByRole("button", { name: "Salvar vaga" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continuar →" })).toBeDisabled();
   });
@@ -339,7 +333,6 @@ describe("trackAnalysis / polling", () => {
       description: LONG_TEXT,
       profile,
     });
-    // profile summary rendered
     expect(screen.getByText("Pleno")).toBeInTheDocument();
   });
 
@@ -409,14 +402,11 @@ describe("trackAnalysis / polling", () => {
       expect(screen.getByText("Vaga salva. A IA está lendo a descrição…")).toBeInTheDocument(),
     );
 
-    // Concurrent edit: aborts polling, resets to idle
     await user.type(textarea, " editado");
     expect(screen.getByLabelText("Descrição da vaga")).toHaveValue(`${LONG_TEXT} editado`);
 
-    // Now resolve the (aborted) polling promise late — its .then should be a no-op
     resolvePolling({ id: "vacancy-1", parseStatus: "done", parsedProfile: profile });
 
-    // Give microtasks a chance to flush, then assert the edited state was preserved
     await Promise.resolve();
     await Promise.resolve();
 
@@ -467,7 +457,6 @@ describe("retryAnalysis() full flow (integration)", () => {
     await waitFor(() =>
       expect(screen.getByText("Vaga salva. A IA está lendo a descrição…")).toBeInTheDocument(),
     );
-    // While analyzing, the retry button (part of the problem card) is gone.
     expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
 
     resolveReparse({ id: "vacancy-1", parseStatus: "pending" });
@@ -498,7 +487,6 @@ describe("retryAnalysis() full flow (integration)", () => {
     mockedWriteVacancyDraft.mockClear();
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
 
-    // Optimistic clear happened synchronously (profile: null) before reparseVacancy resolved
     expect(mockedWriteVacancyDraft).toHaveBeenCalledWith(
       expect.objectContaining({ id: "vacancy-1", profile: null }),
     );
@@ -685,11 +673,9 @@ describe("VacancyProfileSummary", () => {
     await user.type(techInput, "Rust{enter}");
     expect(screen.getByText("Rust")).toBeInTheDocument();
 
-    // Cancel discards the unsaved edit
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByText("Rust")).not.toBeInTheDocument();
 
-    // Re-open editing: should reseed from the original profile, not the discarded edit
     await user.click(screen.getByRole("button", { name: "Ajustar" }));
     expect(screen.getByText("React")).toBeInTheDocument();
     expect(screen.queryByText("Rust")).not.toBeInTheDocument();
@@ -711,7 +697,6 @@ describe("VacancyProfileSummary", () => {
     const cancelButton = screen.getByRole("button", { name: "Cancelar" });
     expect(cancelButton).toBeDisabled();
     await user.click(cancelButton);
-    // still in editing mode (Cancelar/Salvando… still present)
     expect(screen.getByRole("button", { name: "Salvando…" })).toBeInTheDocument();
   });
 
@@ -755,8 +740,6 @@ describe("VacancyProfileSummary", () => {
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Salvando…" })).not.toBeInTheDocument(),
     );
-    // Editing closed (save() always sets editing false), but onSaved wasn't called
-    // so the original profile (Pleno) is still shown, not overwritten.
     expect(screen.getByText("Pleno")).toBeInTheDocument();
     expect(mockedWriteVacancyDraft).not.toHaveBeenCalled();
   });
@@ -774,7 +757,6 @@ describe("VacancyProfileSummary", () => {
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
     expect(await screen.findByText(/Não deu pra salvar\./)).toBeInTheDocument();
-    // still editing: the select + save/cancel buttons are present
     expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
   });
@@ -793,7 +775,6 @@ describe("TagListEditor", () => {
 
     const before = screen.getAllByRole("button", { name: /^Adicionar$/ });
     await user.click(before[0]);
-    // technologies list unchanged: still just React and Node.js
     expect(screen.getByText("React")).toBeInTheDocument();
     expect(screen.getByText("Node.js")).toBeInTheDocument();
   });

@@ -8,8 +8,6 @@ import { ZodValidationPipe } from '../vacancies/schemas/zod-validation.pipe';
 export class TtsController {
   constructor(private readonly service: TtsService) {}
 
-  // O tier gratuito da Azure Speech só aceita 1 requisição concorrente —
-  // sem limite aqui, um script derruba a voz para todo mundo, não só o custo.
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('speak')
   @Header('Content-Type', 'audio/mpeg')

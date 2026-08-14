@@ -23,8 +23,6 @@ import { TtsModule } from './tts/tts.module';
         abortEarly: false,
       },
     }),
-    // Limite geral por IP. Endpoints que disparam chamadas de IA (pagas) têm
-    // um limite bem mais apertado via @Throttle nos próprios controllers.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     PrismaModule,
     CryptoModule,

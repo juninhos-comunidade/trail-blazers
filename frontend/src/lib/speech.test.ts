@@ -18,10 +18,6 @@ import {
   stopSpeaking,
 } from "./speech";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeVoice(overrides: Partial<{ lang: string; localService: boolean; name: string }> = {}) {
   return { lang: "pt-BR", localService: true, name: "Voice", ...overrides } as SpeechSynthesisVoice;
 }
@@ -58,10 +54,6 @@ function makeFakeAudio() {
     addEventListener: vi.fn(),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Shared browser API stubbing / restoration
-// ---------------------------------------------------------------------------
 
 let originalSpeechRecognition: unknown;
 let originalWebkitSpeechRecognition: unknown;
@@ -115,10 +107,6 @@ afterEach(() => {
   URL.revokeObjectURL = originalRevokeObjectURL;
 });
 
-// ---------------------------------------------------------------------------
-// isSpeechRecognitionSupported / isSpeechSynthesisSupported
-// ---------------------------------------------------------------------------
-
 describe("isSpeechRecognitionSupported", () => {
   it("returns false when neither constructor is present", () => {
     expect(isSpeechRecognitionSupported()).toBe(false);
@@ -169,10 +157,6 @@ describe("isSpeechSynthesisSupported", () => {
     expect(isSpeechSynthesisSupported()).toBe(true);
   });
 });
-
-// ---------------------------------------------------------------------------
-// createRecognizer
-// ---------------------------------------------------------------------------
 
 describe("createRecognizer", () => {
   it("without a constructor available, start() synchronously calls onError('unsupported') and stop() is a no-op", () => {
@@ -320,11 +304,6 @@ describe("createRecognizer", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// pickBestVoice (not exported — exercised indirectly through speak()'s
-// browser fallback, capturing the SpeechSynthesisUtterance built).
-// ---------------------------------------------------------------------------
-
 async function runBrowserFallback(
   voices: SpeechSynthesisVoice[],
   opts?: { lang?: string },
@@ -371,10 +350,6 @@ describe("pickBestVoice (via speak() browser fallback)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// loadVoices (not exported — exercised indirectly through speak())
-// ---------------------------------------------------------------------------
-
 describe("loadVoices (via speak() browser fallback)", () => {
   it("resolves immediately when getVoices() already returns a non-empty list", async () => {
     const voice = makeVoice({ lang: "pt-BR", localService: false });
@@ -400,7 +375,6 @@ describe("loadVoices (via speak() browser fallback)", () => {
 
     const promise = speak("hello");
 
-    // Wait a microtask so the addEventListener call has happened.
     await Promise.resolve();
     await Promise.resolve();
 
@@ -437,10 +411,6 @@ describe("loadVoices (via speak() browser fallback)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// speak()
-// ---------------------------------------------------------------------------
-
 describe("speak", () => {
   it("stops the current audio and cancels browser synthesis before trying the server again", async () => {
     const blob = new Blob(["audio"], { type: "audio/mpeg" });
@@ -466,9 +436,6 @@ describe("speak", () => {
   });
 
   it("when two calls overlap, only the latest one ever plays audio — even if the older call's network response arrives last", async () => {
-    // Simulates double-clicking "repetir": the first speak() is still
-    // awaiting its network response when the second one starts. Whichever
-    // response comes back, only the most recent call may create/play audio.
     let resolveFirst: (blob: Blob) => void = () => {};
     let resolveSecond: (blob: Blob) => void = () => {};
 
@@ -492,13 +459,11 @@ describe("speak", () => {
     const firstCall = speak("first", { onStatus: firstStatus });
     const secondCall = speak("second", { onStatus: secondStatus });
 
-    // The older call's response arrives *after* the newer one's.
     resolveSecond(new Blob(["second"], { type: "audio/mpeg" }));
     await secondCall;
     resolveFirst(new Blob(["first"], { type: "audio/mpeg" }));
     await firstCall;
 
-    // Only one Audio was ever created — the stale response never built one.
     expect(audioInstances).toHaveLength(1);
     expect(audioInstances[0].play).toHaveBeenCalledTimes(1);
 
@@ -588,7 +553,6 @@ describe("speak", () => {
 
   it("when browser synthesis is unsupported, calls onStatus({source:'none', reason}) without falling back", async () => {
     vi.mocked(synthesizeSpeech).mockRejectedValueOnce(new TtsError("not configured", "not_configured"));
-    // window.speechSynthesis stays absent (default from beforeEach).
 
     const onStatus = vi.fn();
     await speak("hello", { onStatus });
@@ -597,10 +561,6 @@ describe("speak", () => {
     expect(onStatus).toHaveBeenCalledTimes(1);
   });
 });
-
-// ---------------------------------------------------------------------------
-// describeSpeechStatus
-// ---------------------------------------------------------------------------
 
 describe("describeSpeechStatus", () => {
   it("returns null for source: 'server'", () => {
@@ -626,10 +586,6 @@ describe("describeSpeechStatus", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// stopSpeaking
-// ---------------------------------------------------------------------------
-
 describe("stopSpeaking", () => {
   it("pauses and clears the current audio, and cancels synthesis when supported", async () => {
     const blob = new Blob(["audio"], { type: "audio/mpeg" });
@@ -652,7 +608,6 @@ describe("stopSpeaking", () => {
   });
 
   it("does not throw and skips synthesis.cancel() when synthesis is unsupported", () => {
-    // window.speechSynthesis stays absent (default from beforeEach).
     expect(() => stopSpeaking()).not.toThrow();
   });
 });

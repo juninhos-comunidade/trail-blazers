@@ -337,11 +337,9 @@ describe("ReportPage - headline/summary tiers at score boundaries", () => {
 
     renderFresh();
 
-    // buildHeadline(45) -> "Dá pra melhorar..." tier (40-59)
     expect(
       await screen.findByText("Dá pra melhorar, e o caminho está claro."),
     ).toBeInTheDocument();
-    // buildSummary(45) -> lowest tier (< 60), since buildSummary has only 3 tiers
     expect(
       screen.getByText(
         "Ainda há lacunas importantes. Veja abaixo o que fortalecer antes da próxima simulação.",

@@ -35,17 +35,13 @@ function read<T>(key: string, isValid: (value: unknown) => boolean): T | null {
 function write(key: string, value: unknown): void {
   try {
     sessionStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // best-effort — sem storage, o rascunho não sobrevive a um reload
-  }
+  } catch {}
 }
 
 function remove(key: string): void {
   try {
     sessionStorage.removeItem(key);
-  } catch {
-    // best-effort — nada a fazer se o storage já está indisponível
-  }
+  } catch {}
 }
 
 export function readVacancyDraft(): VacancyDraft | null {
@@ -82,7 +78,6 @@ export function clearRepositoryDraft(): void {
   remove(REPOSITORY_KEY);
 }
 
-/** Reconstrói o "rascunho" de repositório a partir de uma sessão já existente no backend. */
 export function deriveRepositoryDraft(session: InterviewSession): RepositoryDraft | null {
   if (!session.repo) return null;
 

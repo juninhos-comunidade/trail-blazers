@@ -61,7 +61,6 @@ describe("RepositoryCard", () => {
     const checkbox = screen.getByRole("checkbox");
 
     checkbox.focus();
-    // Space key
     act(() => {
       checkbox.dispatchEvent(
         new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }),
@@ -69,7 +68,6 @@ describe("RepositoryCard", () => {
     });
     expect(onToggle).toHaveBeenCalledTimes(1);
 
-    // Enter key
     act(() => {
       checkbox.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
@@ -77,7 +75,6 @@ describe("RepositoryCard", () => {
     });
     expect(onToggle).toHaveBeenCalledTimes(2);
 
-    // Other key: ignored
     act(() => {
       checkbox.dispatchEvent(
         new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true }),

@@ -9,11 +9,9 @@ import { signTestToken, type TestJwtPayload } from "./jwt-helpers";
 
 interface RenderWithProvidersOptions extends Omit<RenderOptions, "wrapper"> {
   route?: string;
-  /** Se fornecido, grava um token válido no localStorage antes de montar (usuário autenticado). */
   authPayload?: TestJwtPayload | null;
 }
 
-/** Autentica o "usuário" gravando um JWT válido no localStorage antes da renderização. */
 export function signInAs(payload: TestJwtPayload = {}): void {
   localStorage.setItem(TOKEN_STORAGE_KEY, signTestToken(payload));
 }

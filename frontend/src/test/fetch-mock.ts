@@ -1,6 +1,5 @@
 import { vi } from "vitest";
 
-/** Monta um `Response`-like resolvido por `fetch`, com `.json()`/`.blob()` prontos. */
 export function jsonResponse(body: unknown, init: { status?: number; ok?: boolean } = {}): Response {
   const status = init.status ?? 200;
   return {

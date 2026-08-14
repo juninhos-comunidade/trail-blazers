@@ -85,10 +85,6 @@ describe("AuthCallbackPage", () => {
   });
 
   it("only runs its redirect logic once, even under StrictMode double-invoke", async () => {
-    // consumeRedirectAfterLogin() removes the stored key on first read, so if
-    // the effect ran twice (missing the `handled` ref guard), the second run
-    // would find no saved redirect and fall back to the dashboard instead —
-    // this scenario is the most sensitive way to catch a double-invocation.
     sessionStorage.setItem(REDIRECT_STORAGE_KEY, "/em-outro-lugar");
     const token = signTestToken();
     mockFetchOnce(jsonResponse({ accessToken: token }));

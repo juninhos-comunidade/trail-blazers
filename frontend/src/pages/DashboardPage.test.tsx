@@ -4,9 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
 import { renderWithProviders, screen, waitFor } from "../test/render";
 
-/** The summary line is the only element with this exact class combination —
- * a plain text/regex query would also match the "cada entrevista..." copy
- * in the page's subheading. */
 function findSummary(): Promise<HTMLElement> {
   return screen.findByText((_content, element) =>
     element?.className === "font-mono text-[12.5px] text-fg-muted",
@@ -138,7 +135,6 @@ describe("DashboardPage", () => {
 
     const summary = await findSummary();
     expect(summary).toHaveTextContent("3 entrevistas");
-    // average of 60 and 80 = 70, best = 80
     expect(summary).toHaveTextContent("média 70/100");
     expect(summary).toHaveTextContent("melhor 80");
   });

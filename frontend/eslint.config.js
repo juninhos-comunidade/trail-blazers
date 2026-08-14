@@ -18,6 +18,9 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
   },
   {
     // Regras de pureza de render (react-hooks/globals), Fast Refresh

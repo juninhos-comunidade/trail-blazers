@@ -377,14 +377,12 @@ describe("waitForVacancyParsing", () => {
     const controller = new AbortController();
     const promise = waitForVacancyParsing("v1", controller.signal);
 
-    // let the first getVacancy() resolve, entering the wait()
     await vi.advanceTimersByTimeAsync(0);
     controller.abort();
     await vi.advanceTimersByTimeAsync(0);
 
     const result = await promise;
     expect(result.parseStatus).toBe("pending");
-    // Only the initial getVacancy call, no re-poll after abort.
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

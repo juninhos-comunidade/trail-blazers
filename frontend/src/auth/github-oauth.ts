@@ -6,19 +6,12 @@ export function startGithubOAuth(redirectTo?: string): void {
   if (redirectTo) {
     try {
       sessionStorage.setItem(REDIRECT_STORAGE_KEY, redirectTo);
-    } catch {
-      // best-effort — sem storage, só perde o redirect pós-login
-    }
+    } catch {}
   }
 
   window.location.href = `${API_URL}/auth/github`;
 }
 
-/**
- * O redirect do OAuth traz só um código de uso único (não o token — assim
- * ele não fica exposto na URL, no histórico do navegador nem em logs).
- * Esta troca acontece uma única vez, por POST.
- */
 export async function exchangeLoginCode(code: string): Promise<string> {
   const response = await fetch(`${API_URL}/auth/exchange`, {
     method: "POST",

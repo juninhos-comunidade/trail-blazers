@@ -33,11 +33,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * O token nunca vai na URL do redirect (fica no histórico do navegador,
-   * em logs de servidor e no header Referer). Em vez disso, o front recebe
-   * só este código de uso único e o troca pelo token via POST.
-   */
   async createLoginCode(accessToken: string): Promise<string> {
     const code = randomBytes(32).toString('hex');
 

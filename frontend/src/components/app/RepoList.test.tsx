@@ -60,11 +60,9 @@ describe("RepositoryList", () => {
       />,
     );
 
-    // go to page 3 (13 items -> pages of 6,6,1)
     fireEvent.click(screen.getByRole("button", { name: "Página 3" }));
     expect(screen.getByText("repo-13")).toBeInTheDocument();
 
-    // shrink list to 8 items -> only 2 pages now; page should self-correct to 2
     rerender(
       <RepositoryList
         repositories={makeRepos(8)}

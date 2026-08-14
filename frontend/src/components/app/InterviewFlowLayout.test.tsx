@@ -107,30 +107,21 @@ describe("InterviewFlowLayout", () => {
 
     renderFlow(`${paths.interview}/s1`);
     await waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
-    // "04" starts visible (statusCompletedStep=2 from hasSession alone before
-    // the fetch resolves); once "completed" lands, step 4 becomes done and
-    // the number disappears — that flip is our signal the fetch applied.
     await waitFor(() => expect(numberVisible("04")).toBe(false));
 
-    // navigate to newInterview with no session draft/param resolvable
     act(() => navigateRef!(paths.newInterview));
 
     await waitFor(() => expect(stepperLabel()).toContain("Etapa 1 de 4"));
-    // getSession should not have been called again (no id to fetch)
     expect(getSession).toHaveBeenCalledTimes(1);
-    // old status ("completed") is still reflected: steps 2,3,4 remain done (checked, no number)
     expect(numberVisible("02")).toBe(false);
     expect(numberVisible("03")).toBe(false);
     expect(numberVisible("04")).toBe(false);
-    // step 1 is current -> shows number "01"
     expect(numberVisible("01")).toBe(true);
   });
 
   it("fetch success updates status from the response", async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession("completed"));
 
-    // current = 1, far from any floor-based "done" step, so any done marks
-    // observed here can only come from the resolved fetch (reportDone -> statusCompletedStep 4).
     renderFlow(vacancyReviewPath("s1"));
 
     await waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
@@ -145,8 +136,6 @@ describe("InterviewFlowLayout", () => {
     renderFlow(`${paths.interview}/s1`);
 
     await waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
-    // status null -> hasSession true (from url) so statusCompletedStep = 2 (tier "hasSession")
-    // current = 3, maxCompletedStep = max(2, 2) = 2 -> steps 1,2 done, step3 active, step4 not done
     await waitFor(() => expect(numberVisible("04")).toBe(true));
     expect(numberVisible("01")).toBe(false);
     expect(numberVisible("02")).toBe(false);
@@ -163,17 +152,14 @@ describe("InterviewFlowLayout", () => {
     renderFlow(`${paths.interview}/s1`);
     await waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
 
-    // navigate away before the fetch resolves; no draft/vacancy -> statusCompletedStep 0
     act(() => navigateRef!(paths.newInterview));
     await waitFor(() => expect(stepperLabel()).toContain("Etapa 1 de 4"));
 
-    // now resolve the stale fetch
     await act(async () => {
       resolveSession(makeSession("completed"));
       await pending;
     });
 
-    // the stale response must not have applied: no steps show as done
     expect(numberVisible("02")).toBe(true);
     expect(numberVisible("03")).toBe(true);
     expect(numberVisible("04")).toBe(true);
@@ -218,7 +204,6 @@ describe("InterviewFlowLayout", () => {
 
       await waitFor(() => expect(stepperLabel()).toContain("Etapa 1 de 4"));
       expect(getSession).not.toHaveBeenCalled();
-      // no other step could be done since current=1 and maxCompletedStep=0
       expect(numberVisible("02")).toBe(true);
       expect(numberVisible("03")).toBe(true);
       expect(numberVisible("04")).toBe(true);
@@ -267,8 +252,6 @@ describe("InterviewFlowLayout", () => {
       renderFlow(repoReviewPath("s1")); // current = 2
 
       await waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
-      // "04" is true pre-fetch (statusCompletedStep=2 from hasSession alone)
-      // and only flips to false once "completed" lands — use it as the signal.
       await waitFor(() => expect(numberVisible("04")).toBe(false));
       expect(numberVisible("01")).toBe(false);
       expect(numberVisible("02")).toBe(true); // current, active, never "done"
@@ -277,12 +260,10 @@ describe("InterviewFlowLayout", () => {
   });
 
   it("maxCompletedStep floors at current - 1 even with no status loaded yet", async () => {
-    // no draft, no vacancy, no session id resolvable at all -> statusCompletedStep = 0
     renderFlow(paths.interview); // current = 3, no :sessionId param
 
     await waitFor(() => expect(stepperLabel()).toContain("Etapa 3 de 4"));
     expect(getSession).not.toHaveBeenCalled();
-    // floor: maxCompletedStep = max(0, 3-1) = 2 -> steps 1,2 done despite no data
     expect(numberVisible("01")).toBe(false);
     expect(numberVisible("02")).toBe(false);
     expect(numberVisible("03")).toBe(true); // current

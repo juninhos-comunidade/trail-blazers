@@ -280,7 +280,6 @@ function RepositoryChooserForm() {
   );
 }
 
-/** Revisão somente-leitura do repositório escolhido numa sessão já existente. */
 function RepositoryReviewView({ sessionId }: { sessionId: string }) {
   const [repository, setRepository] = useState<RepositoryDraft | null>(null);
   const [loaded, setLoaded] = useState(false);

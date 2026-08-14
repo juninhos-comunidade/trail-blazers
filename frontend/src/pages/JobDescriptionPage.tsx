@@ -34,7 +34,6 @@ import { interviewPath, paths } from "@routes/paths";
 
 type Status = "idle" | "saving" | "analyzing" | "saved";
 
-/** Erro de rede/HTTP no meio do acompanhamento — a vaga já existe, só a análise falhou. */
 function toAnalysisProblem(cause: unknown): AnalysisOutcome {
   if (cause instanceof VacancyError) {
     return {
@@ -86,13 +85,6 @@ function JobDescriptionForm() {
   const [status, setStatus] = useState<Status>(draft ? "saved" : "idle");
   const [error, setError] = useState<VacancyError | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisOutcome | null>(null);
-  /**
-   * Se já existe uma sessão criada a partir desta vaga, a etapa está
-   * concluída: as perguntas já foram geradas com o perfil atual, então o
-   * perfil não pode mais ser ajustado (ficaria dessincronizado da entrevista).
-   * `onChange` limpa junto o rascunho de sessão sempre que o texto muda, então
-   * este valor só fica "true" enquanto `saved` continuar sendo a mesma vaga.
-   */
   const [stepConcluded] = useState(() => readSessionDraft() !== null);
 
   const polling = useRef<AbortController | null>(null);
@@ -143,7 +135,6 @@ function JobDescriptionForm() {
     await trackAnalysis(next);
   };
 
-  /** Acompanha o parsing até o fim e traduz o desfecho para a tela. */
   const trackAnalysis = async (target: VacancyDraft) => {
     const controller = new AbortController();
     polling.current = controller;
@@ -325,7 +316,6 @@ function JobDescriptionForm() {
   );
 }
 
-/** Revisão somente-leitura da vaga preenchida numa sessão já existente. */
 function VacancyReviewView({ sessionId }: { sessionId: string }) {
   const [vacancyId, setVacancyId] = useState<string | null>(null);
   const [profile, setProfile] = useState<ParsedVacancyProfile | null>(null);
@@ -486,10 +476,6 @@ function SavedCard({
   );
 }
 
-/**
- * A análise falhou, mas a vaga está salva. O texto precisa deixar claro que o
- * problema foi nosso, e não na descrição que a pessoa escreveu.
- */
 function AnalysisProblem({
   problem,
   onRetry,

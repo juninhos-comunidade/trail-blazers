@@ -156,7 +156,6 @@ describe("RepositoryChooserPage - toggle / selection limit", () => {
     expect(cardA).toHaveAttribute("aria-checked", "true");
     expect(screen.getByText("1/1 selecionado")).toBeInTheDocument();
 
-    // Second selection while at the limit is ignored (repoB stays unchecked, locked)
     await user.click(cardB);
     expect(cardB).toHaveAttribute("aria-checked", "false");
     expect(cardA).toHaveAttribute("aria-checked", "true");
@@ -225,8 +224,6 @@ describe("RepositoryChooserPage - startInterview", () => {
     renderChooser();
 
     await screen.findByRole("checkbox", { name: "octocat/hello-world" });
-    // canStart is false (0 selected) but offerSkip is also false here (success with repos),
-    // so the button is disabled. Nothing to click — cover the pure delegation via zero-selection skip path below instead.
     const button = screen.getByRole("button", { name: /iniciar entrevista/i });
     expect(button).toBeDisabled();
   });

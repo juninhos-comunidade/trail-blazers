@@ -10,7 +10,6 @@ interface FallbackPanelProps {
   action?: ReactNode;
 }
 
-/** Cartão padrão para estados vazios/de erro em telas de conteúdo assíncrono. */
 export function FallbackPanel({
   title,
   detail,

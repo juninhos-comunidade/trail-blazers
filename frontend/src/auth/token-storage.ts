@@ -11,15 +11,11 @@ export function readToken(): string | null {
 export function writeToken(token: string): void {
   try {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
-  } catch {
-    // best-effort — sem storage, a sessão não sobrevive a um reload
-  }
+  } catch {}
 }
 
 export function clearToken(): void {
   try {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
-  } catch {
-    // best-effort — nada a fazer se o storage já está indisponível
-  }
+  } catch {}
 }

@@ -128,8 +128,6 @@ describe("InterviewPage — modo / guarda de rota", () => {
     renderPage(paths.interview);
 
     expect(await screen.findByText("NEW_INTERVIEW_PAGE")).toBeInTheDocument();
-    // NOTE: the load effect isn't conditioned on the guard, so it still fires
-    // even though we redirect away — a harmless but wasted network call.
     await waitFor(() => expect(getSession).toHaveBeenCalledWith("sess-1"));
   });
 
@@ -195,7 +193,6 @@ describe("InterviewPage — derivação de currentIndex/finished/currentQuestion
 
     expect(screen.queryByText(/entrevista concluída/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /ver meu relatório/i })).not.toBeInTheDocument();
-    // input row is still shown (not finished)
     expect(screen.getByLabelText("Sua resposta")).toBeInTheDocument();
   });
 });
@@ -217,7 +214,6 @@ describe("InterviewPage — TTS automático", () => {
     const textarea = screen.getByLabelText("Sua resposta");
     await user.type(textarea, "a");
 
-    // Unrelated re-render (draft change) must not re-trigger speak for same question.
     expect(speak).toHaveBeenCalledTimes(1);
   });
 
@@ -233,9 +229,6 @@ describe("InterviewPage — TTS automático", () => {
     await user.click(toggle); // turn on
     expect(screen.getByRole("button", { name: /desativar leitura das perguntas em voz alta/i })).toBeInTheDocument();
 
-    // Reset call count right before the action under test, so any effect
-    // cleanup left over from a previous test's unmount (React flushes
-    // passive-effect cleanups asynchronously) can't be mistaken for this one.
     (stopSpeaking as Mock).mockClear();
 
     const toggleOff = screen.getByRole("button", { name: /desativar leitura das perguntas em voz alta/i });
@@ -277,8 +270,6 @@ describe("InterviewPage — TTS automático", () => {
     await waitFor(() => expect(speak).toHaveBeenCalledTimes(1));
 
     const repeatButton = screen.getByRole("button", { name: /repetir a pergunta em voz alta/i });
-    // Enquanto a fala automática da pergunta ainda está em andamento, o botão
-    // já deve estar desabilitado — clicar não deve disparar uma 2ª chamada.
     expect(repeatButton).toBeDisabled();
 
     resolveAutoSpeak();
@@ -294,16 +285,12 @@ describe("InterviewPage — TTS automático", () => {
     expect(speak).toHaveBeenCalledTimes(2);
     expect(repeatButton).toBeDisabled();
 
-    // Segundo clique enquanto a primeira chamada de "repetir" ainda está em
-    // voo: nenhuma nova chamada a speak deve acontecer — é exatamente o
-    // clique duplo que causava dois áudios tocando ao mesmo tempo.
     await user.click(repeatButton);
     expect(speak).toHaveBeenCalledTimes(2);
 
     resolveFirstRepeat();
     await waitFor(() => expect(repeatButton).toBeEnabled());
 
-    // Só depois de terminar é que um novo clique dispara outra chamada.
     await user.click(repeatButton);
     expect(speak).toHaveBeenCalledTimes(3);
   });
@@ -419,7 +406,6 @@ describe("InterviewPage — gravação por voz", () => {
 
     await user.click(screen.getByRole("button", { name: /parar gravação/i }));
     expect(controls.stop).toHaveBeenCalled();
-    // still "recording" (still shows "parar gravação") until onEnd fires
     expect(screen.getByRole("button", { name: /parar gravação/i })).toBeInTheDocument();
 
     handlers.onEnd();
@@ -493,7 +479,6 @@ describe("InterviewPage — send()", () => {
     const textarea = screen.getByLabelText("Sua resposta") as HTMLTextAreaElement;
     await user.type(textarea, "resposta boa{Enter}");
 
-    // q1 now shows its answer, and q2 (the new current question) appears.
     await waitFor(() => expect(screen.getByText("resposta boa")).toBeInTheDocument());
     expect(await screen.findByText("Segunda pergunta?")).toBeInTheDocument();
     await waitFor(() => expect(textarea.value).toBe(""));
@@ -547,7 +532,6 @@ describe("InterviewPage — send()", () => {
     await user.type(textarea, "minha resposta{Enter}");
 
     await screen.findByText(/falhou\./i);
-    // textarea re-enabled (submitting false) after failure
     expect(textarea).not.toBeDisabled();
   });
 });
@@ -611,7 +595,6 @@ describe("InterviewPage — ChatMessage", () => {
 
     expect(await screen.findByText("Cenário")).toBeInTheDocument(); // badge label
     expect(await screen.findByText(/entrevista concluída/i)).toBeInTheDocument();
-    // Only one badge should exist — none for the closing message.
     expect(screen.getAllByText("Cenário")).toHaveLength(1);
   });
 
@@ -646,7 +629,6 @@ describe("InterviewPage — ChatMessage", () => {
     const questions = [makeQuestion({ id: "q1", content: "Atual?", answer: null })];
     (getSession as Mock).mockResolvedValue(makeSession({ questions }));
 
-    // TTS off by default
     renderPage(paths.interview);
     await waitForSpinnerGone();
     await screen.findByText("Atual?");

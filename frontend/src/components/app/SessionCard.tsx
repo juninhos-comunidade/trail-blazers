@@ -101,11 +101,6 @@ export function SessionCard({
     try {
       await deleteSession(session.id);
 
-      // O rascunho em sessionStorage (vaga/repositório/sessão) sobrevive à
-      // navegação para permitir retomar uma entrevista — mas se ele aponta
-      // para a sessão que acabou de ser apagada, uma "Nova entrevista"
-      // subsequente ainda mostraria os dados em cache até tentar buscar do
-      // backend e receber 404. Limpa o rascunho quando ele é dessa sessão.
       if (readSessionDraft()?.id === session.id) clearVacancyDraft();
 
       onDeleted(session.id);

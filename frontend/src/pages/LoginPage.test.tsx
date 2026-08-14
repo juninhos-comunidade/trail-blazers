@@ -18,9 +18,6 @@ vi.mock("../components/auth/GitHubSignInButton", () => ({
   },
 }));
 
-/** Simula um `signOut(reason)` disparado antes da LoginPage montar, para testar
- * as mensagens derivadas de `sessionEndReason` sem depender de token expirado
- * de verdade. */
 function SeedSessionEndReason({ reason }: { reason: SessionEndReason }) {
   const { signOut } = useAuth();
 

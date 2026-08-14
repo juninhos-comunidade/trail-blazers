@@ -172,13 +172,6 @@ type SessionStreamEvent =
   | { type: "result"; session: InterviewSession }
   | { type: "error"; status: number; code?: string; message: string; retryable?: boolean };
 
-/**
- * A criação de sessão envolve ler o repositório inteiro e duas chamadas de
- * IA — pode levar dezenas de segundos. O backend responde em NDJSON (uma
- * linha por evento de progresso, terminando numa linha `result`/`error`) em
- * vez de um único JSON no fim, para que `onProgress` possa refletir a etapa
- * real em andamento em vez de um spinner mudo.
- */
 export async function createSession(
   params: { vacancyId: string; owner: string; repo: string; questionCount?: number },
   onProgress?: (message: string) => void,

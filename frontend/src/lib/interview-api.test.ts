@@ -244,8 +244,6 @@ describe("request() helper (via listSessions)", () => {
   });
 });
 
-// --- createSession: non-streaming JSON path -------------------------------
-
 describe("createSession — plain JSON path (no ndjson body/content-type)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -289,9 +287,6 @@ describe("createSession — plain JSON path (no ndjson body/content-type)", () =
   });
 });
 
-// --- createSession: NDJSON streaming path ----------------------------------
-
-/** Builds a fake `Response` whose `.body.getReader().read()` yields the given chunks in order. */
 function streamingResponse(chunks: string[], opts: { ok?: boolean; status?: number } = {}): Response {
   const encoder = new TextEncoder();
   let index = 0;
@@ -409,7 +404,6 @@ describe("createSession — NDJSON streaming path", () => {
       retryable: false,
     });
 
-    // progress events on both sides of the error line were still delivered
     expect(onProgress).toHaveBeenCalledWith("antes do erro");
     expect(onProgress).toHaveBeenCalledWith("depois do erro, ainda consumido");
   });
@@ -429,8 +423,6 @@ describe("createSession — NDJSON streaming path", () => {
     });
   });
 });
-
-// --- deleteSession -----------------------------------------------------------
 
 describe("deleteSession", () => {
   afterEach(() => {
@@ -459,8 +451,6 @@ describe("deleteSession", () => {
     });
   });
 });
-
-// --- getReport -----------------------------------------------------------
 
 describe("getReport", () => {
   afterEach(() => {

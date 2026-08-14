@@ -346,12 +346,6 @@ export class SessionsService {
     return session.report ? this.toReportResponse(session.report, sessionId) : null;
   }
 
-  /**
-   * Estimativa a partir dos tokens já contados por char/4 (mesma aproximação
-   * usada em totalInputTokens/totalOutputTokens) — não é a fatura real da
-   * OpenRouter, só o suficiente para dar uma ordem de grandeza. Com o preço
-   * não configurado (modelo padrão é `:free`), o resultado é sempre 0.
-   */
   private estimateCostUsd(inputTokens: number, outputTokens: number): number {
     const pricePerMillionInput = this.config.get<number>('AI_PRICE_PER_1M_INPUT_TOKENS', 0);
     const pricePerMillionOutput = this.config.get<number>('AI_PRICE_PER_1M_OUTPUT_TOKENS', 0);

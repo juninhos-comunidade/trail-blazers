@@ -39,10 +39,6 @@ describe("App routing/guard composition", () => {
   });
 
   it("renders the auth callback page at /auth/success without authentication", () => {
-    // With no `token`/`error` query params, AuthCallbackPage's own effect
-    // immediately redirects to /login (erro=sem_token) — reaching that
-    // redirect (rather than e.g. GuardedFallback/landing) proves the route
-    // itself is reachable unauthenticated, unguarded by RequireAuth.
     goTo("/auth/success");
     render(<App />);
 

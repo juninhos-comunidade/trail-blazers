@@ -11,7 +11,6 @@ export interface TestJwtPayload {
   iat?: number;
 }
 
-/** Gera um JWT sintático válido (header.payload.assinatura) para testes, sem assinatura real. */
 export function signTestToken(payload: TestJwtPayload = {}): string {
   const header = base64url(JSON.stringify({ alg: "none", typ: "JWT" }));
   const body = base64url(

@@ -9,9 +9,7 @@ describe("InterviewStepper", () => {
       <InterviewStepper current={1} maxCompletedStep={4} getStepHref={() => "/x"} />,
     );
 
-    // step 1 is current: no check icon rendered for it, it shows "01"
     expect(screen.getByText("01")).toBeInTheDocument();
-    // other steps (2,3,4) should be done -> check icons, no numeric labels
     expect(screen.queryByText("02")).not.toBeInTheDocument();
     expect(screen.queryByText("03")).not.toBeInTheDocument();
     expect(screen.queryByText("04")).not.toBeInTheDocument();
@@ -22,7 +20,6 @@ describe("InterviewStepper", () => {
       <InterviewStepper current={3} maxCompletedStep={2} getStepHref={() => "/x"} />,
     );
 
-    // step 1 and 2 done (checks), step 3 current shows "03", step 4 shows "04"
     expect(screen.queryByText("01")).not.toBeInTheDocument();
     expect(screen.queryByText("02")).not.toBeInTheDocument();
     expect(screen.getByText("03")).toBeInTheDocument();
@@ -36,7 +33,6 @@ describe("InterviewStepper", () => {
     );
 
     const links = screen.getAllByRole("link");
-    // active step (2) must not be one of the links
     expect(
       links.find((link) => link.getAttribute("aria-label")?.includes("Repositórios")),
     ).toBeUndefined();

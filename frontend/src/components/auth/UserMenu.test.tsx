@@ -46,7 +46,6 @@ describe("UserMenu", () => {
 
     expect(screen.getByText("octocat")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /sair/i })).toBeInTheDocument();
-    // no avatarUrl in the signed-in payload -> falls back to the initial letter
     expect(screen.getByText("o")).toBeInTheDocument();
   });
 
@@ -58,7 +57,6 @@ describe("UserMenu", () => {
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).not.toBeNull();
 
     navigateSpy.mockImplementationOnce(() => {
-      // At the moment navigate() is invoked, signOut() must already have run.
       expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull();
     });
 

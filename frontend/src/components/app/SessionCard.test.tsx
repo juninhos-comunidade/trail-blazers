@@ -99,7 +99,6 @@ describe("SessionCard", () => {
         />,
       );
 
-      // only first 2 technologies used
       expect(screen.getByTitle("React, Vue")).toBeInTheDocument();
     });
 

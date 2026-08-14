@@ -24,13 +24,6 @@ import {
   type SubmitAnswerDto,
 } from './schemas/interview.schema';
 
-/**
- * A criação de sessão passa por leitura do repositório inteiro + duas
- * chamadas de IA — pode levar dezenas de segundos. Em vez de um POST comum
- * (usuário só vê um spinner mudo), a resposta é um stream NDJSON: uma linha
- * por evento de progresso, terminando numa linha `result` ou `error`. Assim
- * o front pode mostrar exatamente o que está acontecendo em cada etapa.
- */
 type StreamEvent =
   | { type: 'progress'; message: string }
   | { type: 'result'; session: unknown }
@@ -40,8 +33,6 @@ type StreamEvent =
 export class InterviewController {
   constructor(private readonly sessions: SessionsService) {}
 
-  // Cada criação de sessão lê o repositório inteiro e faz duas chamadas de
-  // IA — o limite geral do app não segura um script criando sessões em loop.
   @Throttle({ default: { limit: 5, ttl: 300_000 } })
   @Post()
   async create(

@@ -13,8 +13,6 @@ describe("Logo", () => {
   it("renders the full logo with the InterviewTrail wordmark", () => {
     const { container } = render(<Logo />);
 
-    // The wordmark text is split across a text node ("Interview") and a
-    // nested <span> ("Trail"), so match on the wordmark span's full text.
     expect(container.querySelector(".font-display")?.textContent).toBe(
       "InterviewTrail",
     );
