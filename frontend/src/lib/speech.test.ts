@@ -202,7 +202,7 @@ describe("createRecognizer", () => {
 
     expect(lastInstance).toBeDefined();
     expect(lastInstance!.lang).toBe("pt-BR");
-    expect(lastInstance!.continuous).toBe(false);
+    expect(lastInstance!.continuous).toBe(true);
     expect(lastInstance!.interimResults).toBe(true);
 
     recognizer.start();

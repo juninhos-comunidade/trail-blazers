@@ -62,7 +62,7 @@ export function createRecognizer({
 
   const recognizer = new Recognition();
   recognizer.lang = lang;
-  recognizer.continuous = false;
+  recognizer.continuous = true;
   recognizer.interimResults = true;
 
   recognizer.onresult = (event) => {
