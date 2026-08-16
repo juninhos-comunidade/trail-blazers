@@ -57,14 +57,14 @@ A jornada do usuário na aplicação segue estes passos:
 
 ## Time
 
-> As responsabilidades abaixo serão detalhadas e confirmadas pelo time. *(seção a preencher)*
-
 | Integrante | Função no projeto | GitHub |
 |---|---|---|
-| _Nome_ | _ex.: Backend, autenticação e integração com IA_ | `@usuario` |
-| _Nome_ | _ex.: Frontend, design system e experiência de entrevista_ | `@usuario` |
-| _Nome_ | _ex.: Modelagem de dados e infraestrutura_ | `@usuario` |
-| _Nome_ | _ex.: Product, pitch e documentação_ | `@usuario` |
+| Matheus Aroxa | Full-stack — liderança técnica do projeto: setup inicial (NestJS/React), autenticação (OAuth GitHub + JWT), módulos de vagas, usuários, criptografia, entrevista (orquestração, geração de perguntas e relatório), TTS, integração com IA, tooling (ESLint, Prettier, Husky, commitlint) e a maior parte das telas e componentes do frontend | [`@matheus-aroxa`](https://github.com/matheus-aroxa) |
+| Dayvson (Davyusow) | Backend — módulo `repos`: leitura, filtragem e cache da análise de repositórios do GitHub; setup do ambiente local | `@Davyusow` |
+| Filipe Moreira | Backend — módulo `job-vacancy` (RF-2) e conexão com IA | `@FilipedevGenz` |
+| Vinícius Leôncio | Backend — módulo `vacancies` (RF-2.1: cadastro, validação e persistência de vagas) | `@viniciusleoncio3267` |
+
+> Funções levantadas a partir do histórico de commits do repositório (`git log --author`), com os commits das contas "Matheus Aroxa" e "matheut" consolidados sob um único integrante. Os demais handles de GitHub foram inferidos a partir do nome de usuário associado a cada commit — vale uma conferência rápida do time antes de publicar, caso algum apelido de commit não corresponda ao handle real.
 
 ## Stack técnica
 
